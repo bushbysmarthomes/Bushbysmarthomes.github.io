@@ -126,11 +126,19 @@
     }
     conn.addEventListener("reconnect-error", (c, err) => { if (err === HAWS.ERR_INVALID_AUTH) { saveTokens(null); location.reload(); } });
 
-    // Check the home has the 3D model and allows this app to load it
+    // Find the 3D model. Its folder has a hard-to-guess name that only the signed-in home knows (from its 3D Home sidebar page).
     loading("Loading your 3D home…");
+    let moduleUrl = null;
     try {
-      const r = await fetch(base + "/local/bushby/home.html", { method: "HEAD", cache: "no-cache" });
-      if (!r.ok) return showProblem("Your 3D home isn't installed yet", "Your home is connected, but the 3D model files aren't in Home Assistant's <code>www/bushby</code> folder yet. Ask Bushby Smart Homes to install them.");
+      const panels = await conn.sendMessagePromise({ type: "get_panels" });
+      const p = Object.values(panels || {}).find((x) => x && x.component_name === "custom" && x.config && x.config._panel_custom && x.config._panel_custom.name === "bushby-home");
+      if (p && p.config._panel_custom.module_url) moduleUrl = new URL(p.config._panel_custom.module_url, base + "/").href;
+    } catch (e) {}
+    const notInstalled = () => showProblem("Your 3D home isn't installed yet", "Your home is connected, but its 3D model isn't set up in Home Assistant yet. Ask Bushby Smart Homes to install it.");
+    if (!moduleUrl) return notInstalled();
+    try {
+      const r = await fetch(new URL("home.html", moduleUrl).href, { method: "HEAD", cache: "no-cache" });
+      if (!r.ok) return notInstalled();
     } catch (e) {
       return showProblem("One setting is missing at home",
         "Home Assistant needs to allow the Bushby app to load your 3D model. Add this to <code>configuration.yaml</code> and restart Home Assistant:",
@@ -138,10 +146,8 @@
     }
 
     const hass = await makeHass(conn);
-    window.__bushbyBase = base + "/local/bushby/";
-    window.__bushbyOrigin = base;
     window.__bushbyTitle = HOME.name;
-    try { await import(base + "/local/bushby/bushby-home.js?t=" + Date.now()); }
+    try { const u = new URL(moduleUrl); u.searchParams.set("t", Date.now()); await import(u.href); }
     catch (e) { return showProblem("Couldn't load your 3D home", "Something went wrong loading the model. Try again in a minute."); }
 
     const el = document.createElement("bushby-home");
