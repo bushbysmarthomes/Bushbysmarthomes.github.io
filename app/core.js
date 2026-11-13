@@ -141,8 +141,8 @@
       if (!r.ok) return notInstalled();
     } catch (e) {
       return showProblem("One setting is missing at home",
-        "Home Assistant needs to allow the Bushby app to load your 3D model. Add this to <code>configuration.yaml</code> and restart Home Assistant:",
-        `<pre>http:\n  cors_allowed_origins:\n    - ${location.origin}\n    - https://cast.home-assistant.io</pre>`);
+        "Home Assistant needs to allow the Bushby app to load your 3D model. In Home Assistant's HTTP settings, add this to the allowed CORS origins (Bushby Smart Homes can do this for you):",
+        `<pre>${location.origin}</pre>`);
     }
 
     const hass = await makeHass(conn);
