@@ -32,7 +32,7 @@
   @keyframes bhs{to{transform:rotate(360deg)}}
   .bh-gear{margin-right:6px}`;
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
-  const ICON = new URL("icons/icon-192.png", document.currentScript ? document.currentScript.src : location.href).href;
+  const ICON = new URL("icons/icon-192-v2.png", document.currentScript ? document.currentScript.src : location.href).href;
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function screen(html) {
     let el = document.getElementById("bh-shell");
