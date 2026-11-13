@@ -181,5 +181,19 @@
     });
   }
 
+  // Wall screens: hide the phone/tablet bars and keep the screen on
+  if (HOME.wall) {
+    const full = () => {
+      if (document.fullscreenElement || matchMedia("(display-mode: fullscreen)").matches) return;
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+    };
+    addEventListener("pointerdown", full, { capture: true });
+    let lock = null;
+    const awake = async () => { try { if (navigator.wakeLock && !lock) { lock = await navigator.wakeLock.request("screen"); lock.addEventListener("release", () => (lock = null)); } } catch (e) {} };
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") awake(); });
+    awake();
+  }
+
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
