@@ -87,10 +87,23 @@
   }
 
   // ---------- a stand-in for Home Assistant's own frontend object, which the 3D model expects ----------
-  async function makeHass(conn) {
-    const hass = { states: {}, entities: {}, areas: {}, devices: {} };
+  async function makeHass(conn, auth, base) {
+    const hass = { states: {}, entities: {}, areas: {}, devices: {}, services: {} };
     hass.callService = (d, s, data) => HAWS.callService(conn, d, s, data);
     hass.callWS = (msg) => conn.sendMessagePromise(msg);
+    // Home Assistant's REST API, used e.g. to add or delete automations (admin logins only)
+    hass.callApi = async (method, path, body) => {
+      if (auth.expired) await auth.refreshAccessToken();
+      const r = await fetch(base + "/api/" + path, {
+        method,
+        headers: { Authorization: "Bearer " + auth.accessToken, "Content-Type": "application/json" },
+        body: body == null ? undefined : JSON.stringify(body),
+      });
+      const text = await r.text();
+      if (!r.ok) { const e = new Error(r.status + " " + (text || r.statusText)); e.status_code = r.status; throw e; }
+      try { return JSON.parse(text); } catch (e) { return text; }
+    };
+    try { hass.services = await conn.sendMessagePromise({ type: "get_services" }); } catch (e) {}
     const reg = async () => {
       try {
         const r = await conn.sendMessagePromise({ type: "config/entity_registry/list_for_display" });
@@ -145,7 +158,7 @@
         `<pre>${location.origin}</pre>`);
     }
 
-    const hass = await makeHass(conn);
+    const hass = await makeHass(conn, auth, base);
     window.__bushbyTitle = HOME.name;
     try { const u = new URL(moduleUrl); u.searchParams.set("t", Date.now()); await import(u.href); }
     catch (e) { return showProblem("Couldn't load your 3D home", "Something went wrong loading the model. Try again in a minute."); }
