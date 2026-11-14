@@ -1,6 +1,7 @@
 // Bushby Smart Homes: Automations page.
 // Adds an "Automations" button to the 3D home. "Mine" lists the home's automations (switch on/off, run now,
 // last run, details). "Add new" offers ready-made automations to set up with a few taps.
+// Colours: Bushby light scheme (dark teal #08807C, light teal #4FD1C0, navy #0B1F33 on a light background).
 // Uses the signed-in person's own Home Assistant connection; creating or deleting needs an admin login.
 const B = window.__bushby;
 const hass = () => B.hass();
@@ -126,42 +127,43 @@ const TEMPLATES = [
 // ---------- page ----------
 const STYLE = `
 .ba-open{font:inherit}
-.ba-sheet{position:fixed;inset:0;z-index:50;background:rgba(5,12,20,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;justify-content:center}
-.ba-card{width:100%;max-width:640px;height:100%;display:flex;flex-direction:column;background:#0b1825;color:#e8eef4;font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;box-sizing:border-box;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px calc(env(safe-area-inset-bottom,0px) + 12px)}
-.ba-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.ba-sheet{position:fixed;inset:0;z-index:50;background:rgba(11,31,51,.45);display:flex;justify-content:center}
+.ba-card{width:100%;max-width:640px;height:100%;display:flex;flex-direction:column;background:#FBFDFC;color:#0B1F33;font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;box-sizing:border-box;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px calc(env(safe-area-inset-bottom,0px) + 12px)}
+.ba-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:3px solid #4FD1C0}
 .ba-head h2{flex:1;margin:0;font-size:22px}
-.ba-x{border:1px solid rgba(232,238,244,.15);background:#12212f;color:#e8eef4;border-radius:12px;width:42px;height:42px;font-size:20px;cursor:pointer}
+.ba-back{border:1.5px solid #B9D3CE;background:#fff;color:#0B1F33;border-radius:10px;height:42px;padding:0 14px;font:700 15px system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.ba-x{border:1.5px solid #CFE3DF;background:#FFFFFF;color:#0B1F33;border-radius:12px;width:42px;height:42px;font-size:20px;cursor:pointer}
 .ba-tabs{display:flex;gap:8px;margin-bottom:12px}
-.ba-tab{flex:1;padding:10px;border-radius:12px;border:1px solid rgba(232,238,244,.15);background:#12212f;color:#9fb0c0;font:600 15px system-ui,sans-serif;cursor:pointer}
-.ba-tab[aria-selected=true]{background:#15c7c1;color:#04201f;border-color:#15c7c1}
-.ba-search{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:12px;border:1px solid rgba(232,238,244,.15);background:#12212f;color:#e8eef4;font:inherit;margin-bottom:10px;outline:none}
+.ba-tab{flex:1;padding:10px;border-radius:12px;border:1px solid #CFE3DF;background:#FFFFFF;color:#5A6B78;font:600 15px system-ui,sans-serif;cursor:pointer}
+.ba-tab[aria-selected=true]{background:#08807C;color:#fff;border-color:#08807C}
+.ba-search{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:12px;border:1px solid #CFE3DF;background:#FFFFFF;color:#0B1F33;font:inherit;margin-bottom:10px;outline:none}
 .ba-list{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:grid;gap:8px;align-content:start;padding-bottom:8px}
-.ba-item{background:#12212f;border:1px solid rgba(232,238,244,.1);border-radius:14px;padding:12px}
+.ba-item{background:#FFFFFF;border:1px solid #CFE3DF;border-radius:14px;padding:12px}
 .ba-row{display:flex;align-items:center;gap:10px}
 .ba-name{flex:1;min-width:0}
 .ba-name b{display:block;font-weight:650;overflow:hidden;text-overflow:ellipsis}
-.ba-name small{color:#8fa0b0}
-.ba-sw{position:relative;width:50px;height:30px;flex:none;border-radius:15px;border:0;background:#3a4856;cursor:pointer;transition:background .2s}
+.ba-name small{color:#5A6B78}
+.ba-sw{position:relative;width:50px;height:30px;flex:none;border-radius:15px;border:0;background:#B7C5CC;cursor:pointer;transition:background .2s}
 .ba-sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s}
-.ba-sw[aria-checked=true]{background:#15c7c1}.ba-sw[aria-checked=true]::after{left:23px}
-.ba-btn{border:1px solid rgba(232,238,244,.18);background:transparent;color:#e8eef4;border-radius:10px;padding:7px 11px;font:600 13px system-ui,sans-serif;cursor:pointer}
-.ba-btn.go{background:#15c7c1;color:#04201f;border-color:#15c7c1;padding:12px;font-size:15px;width:100%}
-.ba-btn.del{color:#ff9a8a;border-color:rgba(255,154,138,.4)}
-.ba-more{margin-top:10px;color:#b8c6d3;font-size:14px;display:grid;gap:8px}
-.ba-tpl{display:flex;gap:12px;align-items:flex-start;cursor:pointer;text-align:left;width:100%;background:#12212f;border:1px solid rgba(232,238,244,.1);border-radius:14px;padding:12px;color:inherit;font:inherit}
+.ba-sw[aria-checked=true]{background:#08807C}.ba-sw[aria-checked=true]::after{left:23px}
+.ba-btn{border:1px solid #CFE3DF;background:transparent;color:#0B1F33;border-radius:10px;padding:7px 11px;font:600 13px system-ui,sans-serif;cursor:pointer}
+.ba-btn.go{background:#08807C;color:#fff;border-color:#08807C;padding:12px;font-size:15px;width:100%}
+.ba-btn.del{color:#A3261C;border-color:rgba(163,38,28,.4)}
+.ba-more{margin-top:10px;color:#5A6B78;font-size:14px;display:grid;gap:8px}
+.ba-tpl{display:flex;gap:12px;align-items:flex-start;cursor:pointer;text-align:left;width:100%;background:#FFFFFF;border:1px solid #CFE3DF;border-radius:14px;padding:12px;color:inherit;font:inherit}
 .ba-ico{font-size:26px;line-height:1}
-.ba-tpl p{margin:2px 0 0;color:#8fa0b0;font-size:13.5px}
+.ba-tpl p{margin:2px 0 0;color:#5A6B78;font-size:13.5px}
 .ba-form{display:grid;gap:14px}
 .ba-form label{display:grid;gap:6px;font-weight:600;font-size:14px}
-.ba-form input[type=number],.ba-form input[type=time],.ba-form input[type=text],.ba-form select{padding:11px 12px;border-radius:12px;border:1px solid rgba(232,238,244,.15);background:#12212f;color:#e8eef4;font:inherit}
-.ba-picks{display:grid;gap:4px;max-height:220px;overflow:auto;background:#12212f;border:1px solid rgba(232,238,244,.12);border-radius:12px;padding:6px}
+.ba-form input[type=number],.ba-form input[type=time],.ba-form input[type=text],.ba-form select{padding:11px 12px;border-radius:12px;border:1px solid #CFE3DF;background:#FFFFFF;color:#0B1F33;font:inherit}
+.ba-picks{display:grid;gap:4px;max-height:220px;overflow:auto;background:#FFFFFF;border:1px solid #CFE3DF;border-radius:12px;padding:6px}
 .ba-picks label{display:flex;gap:10px;align-items:center;font-weight:500;padding:6px}
-.ba-picks input{width:20px;height:20px;accent-color:#15c7c1}
-.ba-note{color:#8fa0b0;font-size:13px}
+.ba-picks input{width:20px;height:20px;accent-color:#08807C}
+.ba-note{color:#5A6B78;font-size:13px}
 .ba-form label.ba-row{display:flex}
-.ba-err{color:#ff9a8a;font-size:14px}
-.ba-ok{color:#5be3b0;font-size:14px}
-.ba-empty{color:#8fa0b0;text-align:center;padding:30px 10px}`;
+.ba-err{color:#A3261C;font-size:14px}
+.ba-ok{color:#08807C;font-size:14px}
+.ba-empty{color:#5A6B78;text-align:center;padding:30px 10px}`;
 
 let sheet = null, tab = "mine", query = "", openId = null, unsub = null;
 
@@ -177,16 +179,18 @@ function open(t) {
   }
   render();
 }
-function close() { if (unsub) unsub(); unsub = null; if (sheet) sheet.remove(); sheet = null; openId = null; }
+function close() { if (unsub) unsub(); unsub = null; if (sheet) sheet.remove(); sheet = null; openId = null; window.__bushbyBack = null; }
 
 function frame(body) {
   sheet.innerHTML = `<div class="ba-card">
-    <div class="ba-head"><h2>Automations</h2><button class="ba-x" type="button" aria-label="Close">✕</button></div>
+    <div class="ba-head">${window.__bushbyBack ? `<button class="ba-back" type="button">‹ Menu</button>` : ""}<h2>Automations</h2><button class="ba-x" type="button" aria-label="Close">✕</button></div>
     <div class="ba-tabs" role="tablist">
       <button class="ba-tab" role="tab" data-t="mine" aria-selected="${tab === "mine"}">My automations</button>
       <button class="ba-tab" role="tab" data-t="add" aria-selected="${tab === "add"}">Add new</button>
     </div>${body}</div>`;
   sheet.querySelector(".ba-x").onclick = close;
+  const bk = sheet.querySelector(".ba-back");
+  if (bk) bk.onclick = () => { const back = window.__bushbyBack; close(); if (back) back(); };
   sheet.querySelectorAll(".ba-tab").forEach((b) => (b.onclick = () => { tab = b.dataset.t; openId = null; render(); }));
 }
 function render() { tab === "mine" ? renderMine() : renderAdd(); }
@@ -268,7 +272,7 @@ async function renderForm(t) {
   const field = (f) => {
     if (f.type === "number") return `<label>${esc(f.label)}<span class="ba-row"><input type="number" name="${f.id}" value="${f.def}" min="${f.min}" max="${f.max}" step="1" style="flex:1"> <span class="ba-note">${esc(f.unit || "")}</span></span></label>`;
     if (f.type === "time") return `<label>${esc(f.label)}<input type="time" name="${f.id}" value="${f.def}"></label>`;
-    if (f.type === "check") return `<label class="ba-row" style="font-weight:500"><input type="checkbox" name="${f.id}" ${f.def ? "checked" : ""} style="width:20px;height:20px;accent-color:#15c7c1"> ${esc(f.label)}</label>`;
+    if (f.type === "check") return `<label class="ba-row" style="font-weight:500"><input type="checkbox" name="${f.id}" ${f.def ? "checked" : ""} style="width:20px;height:20px;accent-color:#08807C"> ${esc(f.label)}</label>`;
     if (f.type === "notify") return targets.length
       ? `<label>${esc(f.label)}<select name="${f.id}">${targets.map((x) => `<option value="${esc(x.id)}">${esc(x.label)}</option>`).join("")}</select></label>`
       : `<div class="ba-err">No phone is set up for alerts yet. Install the Home Assistant app on a phone and sign in, then try again.</div>`;
@@ -330,5 +334,9 @@ export function install() {
   else if (bar) bar.appendChild(btn);
   else { btn.style.cssText = "position:fixed;z-index:20;right:16px;bottom:120px"; document.body.appendChild(btn); }
   window.__bushbyAutomations = { open, close, TEMPLATES };
+  // Quick access page (lights, plugs, hoover) lives in its own file beside this one,
+  // then the phone menu, which tidies the top buttons (it needs the Quick and Automations buttons to exist first)
+  import(new URL("./bushby-quick.js?t=" + Date.now(), import.meta.url).href).then((m) => m.install()).catch(() => {})
+    .then(() => import(new URL("./bushby-menu.js?t=" + Date.now(), import.meta.url).href)).then((m) => m.install()).catch(() => {});
 }
 export { TEMPLATES };
