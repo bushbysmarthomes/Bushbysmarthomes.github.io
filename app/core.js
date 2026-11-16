@@ -72,12 +72,19 @@
     el.querySelector("#bh-url").onkeydown = (e) => { if (e.key === "Enter") go(); };
   }
 
-  function showProblem(title, body, extra) {
+  function showProblem(title, body, extra, autoRetry) {
     const el = screen(`<p><b>${esc(title)}</b></p><p>${body}</p>${extra || ""}
       <button id="bh-retry" type="button">Try again</button>
       <button id="bh-out" class="ghost" type="button">Change home / sign out</button>`);
     el.querySelector("#bh-retry").onclick = () => location.reload();
     el.querySelector("#bh-out").onclick = signOut;
+    if (autoRetry) {
+      // Try again by itself when the phone comes back online, when the app is reopened, and every 20 s (up to 15 times).
+      let n = 0; try { n = +sessionStorage.getItem(K + "retries") || 0; sessionStorage.setItem(K + "retries", n + 1); } catch (e) {}
+      addEventListener("online", () => location.reload(), { once: true });
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") location.reload(); });
+      if (n < 15) setTimeout(() => { if (document.visibilityState === "visible") location.reload(); }, 20000);
+    }
   }
 
   function signOut() {
@@ -118,6 +125,29 @@
     return hass;
   }
 
+  // ---------- reaching the home ----------
+  // A home can have more than one secure address (its Home Assistant Cloud link, its own web address).
+  // The app remembers the ones the home reports and tries each, retrying a few times, before giving up.
+  const alts = () => { try { return JSON.parse(store.get("alts") || "[]"); } catch (e) { return []; } };
+  async function connectAny(auth) {
+    const first = auth.data.hassUrl;
+    const list = [first, store.get("url"), ...alts()].filter((u, i, a) => u && u.startsWith("https://") && a.indexOf(u) === i);
+    let last = HAWS.ERR_CANNOT_CONNECT;
+    for (const u of list) {
+      const a = u === first ? auth : new HAWS.Auth({ ...auth.data, hassUrl: u }, saveTokens);
+      try { return { conn: await HAWS.createConnection({ auth: a, setupRetry: 2 }), auth: a }; }
+      catch (e) { if (e === HAWS.ERR_INVALID_AUTH) throw e; last = e; }
+    }
+    throw last;
+  }
+  async function learnAddresses(conn, base, known) {
+    const found = [...(known || [])];
+    try { const c = await conn.sendMessagePromise({ type: "cloud/status" }); if (c && c.remote_enabled && c.remote_domain) found.push("https://" + c.remote_domain); } catch (e) {}
+    try { const cfg = await HAWS.getConfig(conn); [cfg.external_url, cfg.internal_url].forEach((u) => found.push(normalise(u))); } catch (e) {}
+    const keep = [...found, ...alts()].filter((u, i, a) => u && u.startsWith("https://") && u !== base && a.indexOf(u) === i).slice(0, 4);
+    store.set("alts", keep.length ? JSON.stringify(keep) : null);
+  }
+
   // ---------- start ----------
   async function start() {
     const url = store.get("url");
@@ -129,14 +159,18 @@
     try { auth = await HAWS.getAuth({ hassUrl: url || undefined, saveTokens, loadTokens }); }
     catch (e) { saveTokens(null); return showSetup("Sign-in didn't finish. Please try again."); }
     if (fromSignIn) { store.set("url", auth.data.hassUrl); history.replaceState(null, "", location.pathname); }
-    const base = auth.data.hassUrl;
 
     let conn;
-    try { conn = await HAWS.createConnection({ auth }); }
+    const known = [auth.data.hassUrl, store.get("url")];
+    try { ({ conn, auth } = await connectAny(auth)); }
     catch (e) {
       if (e === HAWS.ERR_INVALID_AUTH) { saveTokens(null); return showSetup("You've been signed out. Please sign in again."); }
-      return showProblem("Can't reach your home", "Your home didn't answer. Check this phone is online, and that the Home Assistant box at home is switched on.");
+      return showProblem("Can't reach your home", "Your home didn't answer. Check this phone is online, and that the Home Assistant box at home is switched on. The app will keep trying.", "", true);
     }
+    try { sessionStorage.removeItem(K + "retries"); } catch (e) {}
+    const base = auth.data.hassUrl;
+    if (store.get("url") !== base) store.set("url", base);
+    learnAddresses(conn, base, known);
     conn.addEventListener("reconnect-error", (c, err) => { if (err === HAWS.ERR_INVALID_AUTH) { saveTokens(null); location.reload(); } });
 
     // Find the 3D model. Its folder has a hard-to-guess name that only the signed-in home knows (from its 3D Home sidebar page).
