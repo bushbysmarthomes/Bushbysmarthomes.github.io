@@ -12,7 +12,8 @@ const $ = (sel) => document.querySelector(sel);
 //   "module"  = a Bushby page with its own Back support (Quick access, Automations)
 //   "action"  = just press the button and stay on the menu (Sign out asks first)
 const ITEMS = [
-  ["Control", ".bq-open", "Quick access", "Lights, plugs and hoover", "module"],
+  ["Control", ".bq-open", "Quick access", "Lights, plugs, hoover and energy", "module"],
+  ["Control", ".bq-energy-open", "Energy", "Using now, today and this month", "module"],
   ["Control", "#vTv", "TV", "Remote control", "sheet"],
   ["Control", "#vMusic", "Music", "Playing now and controls", "music"],
   ["Around the home", "#vWx", "Weather", "live", "wx"],

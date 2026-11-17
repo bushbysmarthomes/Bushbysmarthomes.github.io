@@ -1,7 +1,8 @@
 // Bushby Smart Homes: Quick access page.
 // Adds a "Quick" button to the 3D home: big buttons for lights (all on / all off, each one, and a brightness
 // slider on lights that can dim),
-// plugs and the robot vacuum. Works from whatever this home has; nothing here is home-specific.
+// plugs, the robot vacuum and an Energy section (every device that measures its own energy use: watts now,
+// used today and this month). Works from whatever this home has; nothing here is home-specific.
 // Colours: Bushby light scheme (dark teal #08807C, light teal #4FD1C0, navy #0B1F33 on a light background).
 const B = window.__bushby;
 const hass = () => B.hass();
@@ -43,12 +44,41 @@ const all = (pred) => Object.keys(hass().states).filter(pred).sort(byName);
 const lights = () => [...all((id) => dom(id) === "light" && visible(id) && !isGroup(id)), ...all((id) => isPlug(id) && LAMPISH.test(nameOf(id)))].sort(byName);
 const plugs = () => all((id) => isPlug(id) && !LAMPISH.test(nameOf(id)));
 const vacuums = () => all((id) => dom(id) === "vacuum" && visible(id));
+// Energy: every sensor that counts energy used (kWh), paired with the same device's live power (W).
+// Not filtered by the assistant list, because metering sensors are rarely shared with it. Export/solar meters left out.
+const isMeter = (id) => dom(id) === "sensor" && dc(id) === "energy" && !reg(id).hidden && !reg(id).hidden_by && !/export|return|produc|solar|feed.?in|generat/i.test(id + " " + nameOf(id));
+const meters = () => all(isMeter);
+const devOf = (id) => reg(id).device_id;
+const powerFor = (id) => { const d = devOf(id); return d ? Object.keys(hass().states).find((p) => dom(p) === "sensor" && dc(p) === "power" && devOf(p) === d) || null : null; };
+const meterName = (id) => nameOf(id).replace(/\s*(total\s*)?energy(\s*(used|consumption|total))?\s*$/i, "").trim() || nameOf(id);
+const KWH = { wh: 0.001, kwh: 1, mwh: 1000 };
+const toKwh = (v, id) => { const u = String(((st(id) || {}).attributes || {}).unit_of_measurement || "kWh").toLowerCase(); const n = Number(v); return Number.isFinite(n) ? n * (KWH[u] || 1) : null; };
+const watts = (id) => { const p = powerFor(id), s = p && st(p); if (!s) return null; const n = Number(s.state); if (!Number.isFinite(n)) return null; const u = String(s.attributes.unit_of_measurement || "W").toLowerCase(); return u === "kw" ? n * 1000 : n; };
+const fmtW = (w) => (w == null ? "–" : w >= 1000 ? (w / 1000).toFixed(w >= 10000 ? 0 : 1) + " kW" : (w >= 10 ? Math.round(w) : Math.round(w * 10) / 10) + " W");
+const fmtKwh = (k) => (k == null ? "–" : k < 10 ? k.toFixed(2) + " kWh" : k < 100 ? k.toFixed(1) + " kWh" : Math.round(k) + " kWh");
+// Electricity price, if the home has a price sensor (anything per kWh)
+const priceSensor = () => Object.keys(hass().states).find((id) => dom(id) === "sensor" && /\/\s*kwh$/i.test(String((st(id).attributes || {}).unit_of_measurement || "")) && !offline(id)) || null;
+let use = {}, useAt = 0, useTimer = null;
+async function loadUse() {
+  const out = {};
+  await Promise.all(meters().map(async (id) => {
+    const r = {};
+    for (const p of ["day", "month"]) {
+      try { const s = await hass().callWS({ type: "recorder/statistic_during_period", statistic_id: id, calendar: { period: p }, types: ["change"] }); r[p] = s && s.change != null ? toKwh(s.change, id) : null; }
+      catch (e) { r[p] = null; }
+    }
+    out[id] = r;
+  }));
+  use = out; useAt = Date.now();
+  if (sheet) draw(true);
+}
 const offline = (id) => { const s = st(id); return !s || s.state === "unavailable" || s.state === "unknown"; };
 const isOn = (id) => (st(id) || {}).state === "on";
 
 const ICON = {
   light: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg>',
   plug: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v5M15 3v5"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></svg>',
+  energy: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
   vac: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v2"/></svg>',
 };
 
@@ -89,11 +119,23 @@ const STYLE = `
 .bq-vac .bq-vn b{display:block;font-size:16px}
 .bq-vac .bq-vn small{color:#5A6B78}
 .bq-vac .bq-vb{display:flex;gap:8px}
+.bq-etile{display:flex;flex-direction:column;gap:6px;min-height:104px;padding:14px;border-radius:12px;border:1.5px solid #CFE3DF;background:#fff;color:#0B1F33}
+.bq-etile svg{color:#08807C}
+.bq-etile b{font-weight:650;font-size:16px;line-height:1.2;overflow-wrap:anywhere}
+.bq-etile .bq-w{font-size:26px;font-weight:750;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.bq-etile .bq-w.live{color:#08807C}
+.bq-etile small{color:#5A6B78;font-size:13.5px;font-variant-numeric:tabular-nums}
+.bq-etile.dead{opacity:.5;background:#F1F5F4}
+.bq-esum{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.bq-esum div{flex:1;min-width:130px;padding:12px 14px;border-radius:12px;background:#E9F6F4;border:1.5px solid #CFE3DF}
+.bq-esum span{display:block;font-size:13px;color:#5A6B78}
+.bq-esum strong{font-size:20px;font-weight:750;font-variant-numeric:tabular-nums}
+.bq-enote{color:#5A6B78;font-size:13px;margin-top:8px}
 .bq-msg{margin-top:12px;color:#A3261C;font-size:14px;min-height:18px}
 .bq-empty{color:#5A6B78;padding:30px 6px;text-align:center}
 .bq-tap:focus-visible,.bq-bri input:focus-visible,.bq-all:focus-visible,.bq-x:focus-visible{outline:3px solid #4FD1C0;outline-offset:2px}`;
 
-let sheet = null, unsub = null, pending = {};
+let sheet = null, unsub = null, pending = {}, view = "all"; // view: "all" (Quick access) or "energy" (Energy page on its own)
 
 async function call(domain, service, ids) {
   const list = [].concat(ids);
@@ -142,7 +184,8 @@ function tile(id, icon) {
 
 // Only rebuild when something on this page changed, so a tap is never lost to a redraw.
 let lastSig = "";
-const sig = () => [...lights(), ...plugs(), ...vacuums()].map((id) => id + "=" + ((st(id) || {}).state) + (pending[id] ? "*" + pending[id].on : "") + (canDim(id) ? "~" + briOf(id) : "")).join("|") + "#" + (exposed ? exposed.size : "-");
+const sig = () => [...lights(), ...plugs(), ...vacuums()].map((id) => id + "=" + ((st(id) || {}).state) + (pending[id] ? "*" + pending[id].on : "") + (canDim(id) ? "~" + briOf(id) : "")).join("|") + "#" + (exposed ? exposed.size : "-")
+  + "#" + meters().map((id) => id + "=" + ((st(id) || {}).state) + "/" + watts(id)).join("|") + "@" + useAt;
 function draw(force) {
   if (!sheet) return;
   if (dragging && !force) return; // never rebuild under a finger on a slider
@@ -150,7 +193,7 @@ function draw(force) {
   if (!force && g === lastSig && sheet.querySelector(".bq-body").children.length) return;
   lastSig = g;
   const body = sheet.querySelector(".bq-body");
-  const L = lights(), P = plugs(), V = vacuums();
+  const E = view === "energy", L = E ? [] : lights(), P = E ? [] : plugs(), V = E ? [] : vacuums();
   const nOn = L.filter((id) => !offline(id) && shownOn(id)).length;
   let h = "";
   if (L.length) h += `<section class="bq-sec"><div class="bq-sech"><h3>Lights<small>${nOn ? nOn + " on" : "all off"}</small></h3>
@@ -162,7 +205,21 @@ function draw(force) {
     return `<div class="bq-vac" data-vac="${esc(id)}">${ICON.vac}<div class="bq-vn"><b>${esc(nameOf(id))}</b><small>${esc(VSTATE[s] || s || "Offline")}</small></div>
       <div class="bq-vb"><button class="bq-all on" type="button" data-v="${s === "cleaning" ? "pause" : "start"}" ${off ? "disabled" : ""}>${s === "cleaning" ? "Pause" : "Start"}</button><button class="bq-all off" type="button" data-v="return_to_base" ${off || s === "docked" ? "disabled" : ""}>Send home</button></div></div>`;
   }).join("")}</section>`;
-  if (!h) h = `<div class="bq-empty">No lights, plugs or hoover to control in this home yet.</div>`;
+  const M = meters();
+  if (M.length) {
+    const ws = M.map(watts), now = ws.reduce((a, w) => a + (w || 0), 0);
+    const sum = (p) => { const v = M.map((id) => (use[id] || {})[p]); return v.some((x) => x != null) ? v.reduce((a, x) => a + (x || 0), 0) : null; };
+    const ps = priceSensor(), pv = ps ? Number(st(ps).state) : NaN, pu = ps ? String(st(ps).attributes.unit_of_measurement || "") : "";
+    const today = sum("day");
+    h += `<section class="bq-sec"><div class="bq-sech"><h3>Energy<small>${M.length} device${M.length > 1 ? "s" : ""} measuring</small></h3></div>
+      <div class="bq-esum"><div><span>Using now</span><strong>${fmtW(now)}</strong></div><div><span>Today</span><strong>${fmtKwh(today)}</strong></div><div><span>This month</span><strong>${fmtKwh(sum("month"))}</strong></div>${Number.isFinite(pv) ? `<div><span>Price now</span><strong>${pv.toFixed(2)}</strong> <small>${esc(pu)}</small></div>` : ""}</div>
+      <div class="bq-grid">${M.map((id, i) => {
+        const off = offline(id), w = ws[i], u = use[id] || {}, area = areaOf(id);
+        return `<div class="bq-etile${off ? " dead" : ""}">${ICON.energy}<b>${esc(meterName(id))}</b><span class="bq-w${w > 1 ? " live" : ""}">${off ? "Offline" : fmtW(w)}</span><small>${u.day == null && u.month == null ? (useAt ? "No history yet" : "Loading…") : `Today ${fmtKwh(u.day)} · Month ${fmtKwh(u.month)}`}${area ? "<br>" + esc(area) : ""}</small></div>`;
+      }).join("")}</div>
+      <div class="bq-enote">Only devices that measure their own use are shown. Today and month update every 5 minutes.</div></section>`;
+  }
+  if (!h) h = E ? `<div class="bq-empty">No devices in this home measure their energy use yet. Plugs with energy monitoring will appear here.</div>` : `<div class="bq-empty">No lights, plugs or hoover to control in this home yet.</div>`;
   // keep the scroll position and don't rebuild under someone's finger
   const y = body.scrollTop;
   body.innerHTML = h + `<div class="bq-msg" role="status">${esc((sheet.querySelector(".bq-msg") || {}).textContent || "")}</div>`;
@@ -204,24 +261,26 @@ function draw(force) {
   })));
 }
 
-async function open() {
+async function open(v) {
   if (sheet) return;
+  view = v === "energy" ? "energy" : "all";
   sheet = document.createElement("div");
   sheet.className = "bq-sheet";
   sheet.setAttribute("role", "dialog");
-  sheet.setAttribute("aria-label", "Quick access");
+  sheet.setAttribute("aria-label", view === "energy" ? "Energy" : "Quick access");
   // When opened from the phone menu, window.__bushbyBack is set: show a Back button that returns there.
   const back = window.__bushbyBack;
-  sheet.innerHTML = `<div class="bq-card"><div class="bq-head">${back ? `<button class="bq-back" type="button">‹ Menu</button>` : ""}<h2>Quick access</h2><button class="bq-x" type="button" aria-label="Close">✕</button></div><div class="bq-body"></div></div>`;
+  sheet.innerHTML = `<div class="bq-card"><div class="bq-head">${back ? `<button class="bq-back" type="button">‹ Menu</button>` : ""}<h2>${view === "energy" ? "Energy" : "Quick access"}</h2><button class="bq-x" type="button" aria-label="Close">✕</button></div><div class="bq-body"></div></div>`;
   document.body.appendChild(sheet);
   sheet.querySelector(".bq-x").onclick = close;
   if (back) sheet.querySelector(".bq-back").onclick = () => { close(); back(); };
   sheet.onclick = (e) => { if (e.target === sheet) close(); };
   draw();
   unsub = B.onHass(() => draw());
+  loadUse(); useTimer = setInterval(loadUse, 5 * 60 * 1000);
   if (exposed === null) { await loadExposed(); draw(); }
 }
-function close() { if (unsub) unsub(); unsub = null; if (sheet) sheet.remove(); sheet = null; pending = {}; briPending = {}; dragging = false; lastSig = ""; window.__bushbyBack = null; }
+function close() { if (unsub) unsub(); unsub = null; if (useTimer) clearInterval(useTimer); useTimer = null; if (sheet) sheet.remove(); sheet = null; pending = {}; briPending = {}; dragging = false; lastSig = ""; window.__bushbyBack = null; }
 
 export function install() {
   if (window.__bushbyQuick) return;
@@ -229,12 +288,17 @@ export function install() {
   const btn = document.createElement("button");
   btn.type = "button"; btn.className = "btn bq-open"; btn.textContent = "Quick";
   btn.setAttribute("aria-label", "Quick access");
-  btn.onclick = open;
+  btn.onclick = () => open();
   const anchor = document.querySelector(".ba-open") || [...document.querySelectorAll("button")].find((b) => /^\s*Climate\s*$/.test(b.textContent));
   const bar = document.querySelector("header.bar") || document.querySelector(".bar");
   if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(btn, anchor);
   else if (bar) bar.appendChild(btn);
   else { btn.style.cssText = "position:fixed;z-index:20;right:16px;bottom:170px"; document.body.appendChild(btn); }
+  // hidden opener for the Energy page, used by the phone menu's Energy tile
+  const eb = document.createElement("button");
+  eb.type = "button"; eb.className = "bq-energy-open"; eb.style.display = "none"; eb.textContent = "Energy";
+  eb.onclick = () => open("energy");
+  document.body.appendChild(eb);
   window.__bushbyQuick = { open, close };
   loadExposed();
 }
