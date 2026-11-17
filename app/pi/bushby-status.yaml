@@ -1,6 +1,6 @@
 # Bushby status board: one package per home (generic, copy as-is).
 # Every 15 minutes the hub tells the status board it is alive, and lists anything that needs attention:
-#   - Zigbee devices that have dropped off (unavailable)
+#   - Zigbee, Matter and Thread devices that have dropped off (unavailable)
 #   - batteries under 20 %
 #   - no successful automatic backup in the last 48 hours
 # All fine  -> "ok" ping.  Anything wrong -> "fail" ping with the list.  No ping at all for 45 min -> board shows the hub as down.
@@ -12,7 +12,7 @@
 #        bushby_status_url: https://hc-ping.com/<this home's ping id>
 #        bushby_status_fail_url: https://hc-ping.com/<this home's ping id>/fail
 #   3. Check configuration, restart once, then add the automation to HA_entity_IDs.xlsx (Automations tab).
-# Uses ZHA. For a Zigbee2MQTT home change 'zha' to 'mqtt' in two places below.
+# Watches ZHA (Zigbee), Matter (incl. Thread) and Zigbee2MQTT devices; edit 'radios' below if a home uses something else.
 
 rest_command:
   bushby_status_ok:
@@ -31,7 +31,7 @@ rest_command:
 automation:
   - id: bushby_status_ping
     alias: "Bushby: status ping to the status board"
-    description: "Every 15 minutes: tells the Bushby status board the hub is alive and lists offline Zigbee devices, batteries under 20% and a missing backup."
+    description: "Every 15 minutes: tells the Bushby status board the hub is alive and lists offline devices, batteries under 20% and a missing backup."
     mode: single
     trigger:
       - platform: time_pattern
@@ -40,19 +40,22 @@ automation:
         event: start
     variables:
       battery_limit: 20
+      radios: ['zha', 'matter', 'mqtt']   # device integrations to watch (ZHA Zigbee, Matter/Thread, Zigbee2MQTT)
       backup_entity: sensor.backup_last_successful_automatic_backup
       offline: >-
         {% set ns = namespace(l=[]) %}
-        {% for d in integration_entities('zha')
-             | select('is_state', 'unavailable')
-             | map('device_id') | reject('none') | unique %}
-          {% set ns.l = ns.l + [device_attr(d, 'name_by_user') or device_attr(d, 'name')] %}
+        {% for i in radios %}
+          {% for d in integration_entities(i)
+               | select('is_state', 'unavailable')
+               | map('device_id') | reject('none') | unique %}
+            {% set ns.l = ns.l + [device_attr(d, 'name_by_user') or device_attr(d, 'name')] %}
+          {% endfor %}
         {% endfor %}
         {{ ns.l | unique | list }}
       low_batteries: >-
         {% set ns = namespace(l=[]) %}
         {% for s in states.sensor
-             if s.attributes.device_class == 'battery'
+             if s.attributes.get('device_class') == 'battery'
              and s.state | is_number
              and s.state | float(100) < battery_limit %}
           {% set ns.l = ns.l + [s.name ~ ' (' ~ (s.state | float | round(0) | int) ~ '%)'] %}
@@ -66,7 +69,7 @@ automation:
       problems: "{{ (offline | count) + (low_batteries | count) + (1 if backup_problem | trim else 0) }}"
       body: |-
         Home Assistant {{ state_attr('update.home_assistant_core_update', 'installed_version') or '' }}
-        Zigbee devices offline ({{ offline | count }}): {{ offline[:15] | join(', ') if offline else 'none' }}
+        Devices offline ({{ offline | count }}): {{ offline[:15] | join(', ') if offline else 'none' }}
         Batteries under {{ battery_limit }}% ({{ low_batteries | count }}): {{ low_batteries[:15] | join(', ') if low_batteries else 'none' }}
         Backup: {{ backup_problem | trim if backup_problem | trim else 'OK' }}
     action:
