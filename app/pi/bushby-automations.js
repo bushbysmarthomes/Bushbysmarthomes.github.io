@@ -17,7 +17,7 @@ const ago = (iso) => {
   const h = Math.round(m / 60);
   if (h < 24) return `Ran ${h} h ago`;
   const d = new Date(iso);
-  return "Ran " + d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " " + d.toTimeString().slice(0, 5);
+  return "Ran " + d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + " " + d.toTimeString().slice(0, 5);
 };
 
 // ---------- who to notify ----------
@@ -46,20 +46,20 @@ const notifyAction = (f, title, message) => ({ action: "notify." + f.notify, dat
 
 const TEMPLATES = [
   {
-    key: "away_off", icon: "🚪", title: "Lights off when everyone leaves",
+    key: "away_off", icon: "away_off", title: "Lights off when everyone leaves",
     desc: "When nobody is home for a while, every light switches off. Uses the phones signed in to Home Assistant to know who is home.",
     needs: () => !!hass().states["zone.home"],
     fields: [{ id: "mins", label: "Once everyone has been out for", type: "number", unit: "minutes", def: 10, min: 1, max: 240 }],
     build: (f) => ({ triggers: [{ trigger: "numeric_state", entity_id: "zone.home", below: 1, for: mins(+f.mins) }], conditions: [], actions: [{ action: "light.turn_off", target: { entity_id: "all" } }], mode: "single" }),
   },
   {
-    key: "night_off", icon: "🌙", title: "All lights off at bedtime",
+    key: "night_off", icon: "night_off", title: "All lights off at bedtime",
     desc: "Every light in the home switches off at the time you choose, every night.",
     fields: [{ id: "time", label: "Time", type: "time", def: "23:30" }],
     build: (f) => ({ triggers: [{ trigger: "time", at: f.time + ":00" }], conditions: [], actions: [{ action: "light.turn_off", target: { entity_id: "all" } }], mode: "single" }),
   },
   {
-    key: "sunset_on", icon: "🌇", title: "Lights on at sunset",
+    key: "sunset_on", icon: "sunset_on", title: "Lights on at sunset",
     desc: "The lights you pick come on when the sun goes down, every day of the year.",
     fields: [
       { id: "lights", label: "Lights", type: "entities", filter: LIGHTS, min: 1 },
@@ -71,7 +71,7 @@ const TEMPLATES = [
     },
   },
   {
-    key: "motion_light", icon: "🚶", title: "Light on with movement",
+    key: "motion_light", icon: "motion_light", title: "Light on with movement",
     desc: "A light comes on when someone walks in, and goes off again when the room has been empty for a while.",
     fields: [
       { id: "sensor", label: "Motion sensor", type: "entity", filter: MOTION },
@@ -87,13 +87,13 @@ const TEMPLATES = [
     }),
   },
   {
-    key: "leak_alert", icon: "💧", title: "Water leak alert",
+    key: "leak_alert", icon: "leak_alert", title: "Water leak alert",
     desc: "Your phone gets an alert the moment a leak sensor detects water.",
     fields: [{ id: "sensors", label: "Leak sensors", type: "entities", filter: LEAKS, min: 1, all: true }, notifyField],
     build: (f) => ({ triggers: [{ trigger: "state", entity_id: f.sensors, to: "on" }], conditions: [], actions: [notifyAction(f, "Water leak!", "{{ trigger.to_state.name }} has detected water.")], mode: "queued" }),
   },
   {
-    key: "door_open", icon: "🔓", title: "Door left open alert",
+    key: "door_open", icon: "door_open", title: "Door left open alert",
     desc: "Your phone gets an alert if a door or window stays open too long.",
     fields: [
       { id: "doors", label: "Doors and windows", type: "entities", filter: DOORS, min: 1, all: true },
@@ -103,7 +103,7 @@ const TEMPLATES = [
     build: (f) => ({ triggers: [{ trigger: "state", entity_id: f.doors, to: "on", for: mins(+f.mins) }], conditions: [], actions: [notifyAction(f, "Left open", `{{ trigger.to_state.name }} has been open for ${+f.mins} minutes.`)], mode: "queued" }),
   },
   {
-    key: "low_battery", icon: "🔋", title: "Low battery alert",
+    key: "low_battery", icon: "low_battery", title: "Low battery alert",
     desc: "Your phone gets an alert when a sensor's battery runs low, so it never goes quiet without warning.",
     fields: [
       { id: "sensors", label: "Batteries to watch", type: "entities", filter: BATT, min: 1, all: true },
@@ -113,7 +113,7 @@ const TEMPLATES = [
     build: (f) => ({ triggers: [{ trigger: "numeric_state", entity_id: f.sensors, below: +f.level }], conditions: [], actions: [notifyAction(f, "Battery low", "{{ trigger.to_state.name }} is at {{ trigger.to_state.state }}%.")], mode: "queued" }),
   },
   {
-    key: "offline_alert", icon: "📡", title: "Device offline alert",
+    key: "offline_alert", icon: "offline_alert", title: "Device offline alert",
     desc: "Your phone gets an alert when a device stops answering, so you know before it matters.",
     fields: [
       { id: "devices", label: "Devices to watch", type: "entities", filter: DEVICES, min: 1 },
@@ -124,6 +124,19 @@ const TEMPLATES = [
   },
 ];
 
+const SVGI = {
+  away_off: '<path d="M14 3h5v18h-5"/><path d="M10 12H3"/><path d="m6 9-3 3 3 3"/>',
+  night_off: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  sunset_on: '<path d="M3 18h18"/><path d="M7 18a5 5 0 0 1 10 0"/><path d="M12 6v3"/><path d="m5.6 10.6 1.4 1.4"/><path d="m18.4 10.6-1.4 1.4"/><path d="M9 22h6"/>',
+  motion_light: '<circle cx="13" cy="4" r="2"/><path d="m9 21 2-6 3 3v3"/><path d="m6 12 3-3 4 1 3 3"/><path d="m11 15-1-5"/>',
+  leak_alert: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+  door_open: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>',
+  low_battery: '<rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M5 10v4"/>',
+  offline_alert: '<path d="M2 8.8a15 15 0 0 1 4.2-2.6"/><path d="M10.3 5.1A15 15 0 0 1 22 8.8"/><path d="M5 12.5a10 10 0 0 1 3.5-2"/><path d="M15.5 10.6a10 10 0 0 1 3.5 1.9"/><path d="M8.5 16a5 5 0 0 1 7 0"/><path d="M12 20h.01"/><path d="m3 3 18 18"/>',
+};
+const icon = (k) => `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SVGI[k] || SVGI.offline_alert}</svg>`;
+const why = (err) => { const m = String((err && (err.message || err.code)) || err || ""); return /time|connect|socket|lost|network/i.test(m) ? "The connection to the home dropped. Try again in a moment." : "Home Assistant didn't accept that. Try again, or ask Bushby Smart Homes."; };
+
 // ---------- page ----------
 const STYLE = `
 .ba-open{font:inherit}
@@ -132,38 +145,41 @@ const STYLE = `
 .ba-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:3px solid #4FD1C0}
 .ba-head h2{flex:1;margin:0;font-size:22px}
 .ba-back{border:1.5px solid #B9D3CE;background:#fff;color:#0B1F33;border-radius:10px;height:42px;padding:0 14px;font:700 15px system-ui,sans-serif;cursor:pointer;white-space:nowrap}
-.ba-x{border:1.5px solid #CFE3DF;background:#FFFFFF;color:#0B1F33;border-radius:12px;width:42px;height:42px;font-size:20px;cursor:pointer}
-.ba-tabs{display:flex;gap:8px;margin-bottom:12px}
-.ba-tab{flex:1;padding:10px;border-radius:12px;border:1px solid #CFE3DF;background:#FFFFFF;color:#5A6B78;font:600 15px system-ui,sans-serif;cursor:pointer}
-.ba-tab[aria-selected=true]{background:#08807C;color:#fff;border-color:#08807C}
+.ba-x{border:1.5px solid #CFE3DF;background:#FFFFFF;color:#0B1F33;border-radius:12px;width:44px;height:44px;font-size:20px;cursor:pointer}
+.ba-tabs{display:flex;gap:4px;margin-bottom:12px;background:#E6F0EE;border-radius:12px;padding:4px}
+.ba-tab{flex:1;min-height:44px;padding:10px;border-radius:9px;border:0;background:transparent;color:#4A5B68;font:600 15px system-ui,sans-serif;cursor:pointer}
+.ba-tab[aria-selected=true]{background:#FFFFFF;color:#0B1F33;font-weight:700;box-shadow:0 1px 3px rgba(11,31,51,.15)}
+.ba-tab:focus-visible,.ba-sw:focus-visible,.ba-btn:focus-visible,.ba-tpl:focus-visible,.ba-x:focus-visible,.ba-back:focus-visible,.ba-search:focus-visible{outline:3px solid #4FD1C0;outline-offset:2px}
+.ba-tpl:hover{border-color:#08807C}
 .ba-search{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:12px;border:1px solid #CFE3DF;background:#FFFFFF;color:#0B1F33;font:inherit;margin-bottom:10px;outline:none}
 .ba-list{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:grid;gap:8px;align-content:start;padding-bottom:8px}
 .ba-item{background:#FFFFFF;border:1px solid #CFE3DF;border-radius:14px;padding:12px}
 .ba-row{display:flex;align-items:center;gap:10px}
 .ba-name{flex:1;min-width:0}
 .ba-name b{display:block;font-weight:650;overflow:hidden;text-overflow:ellipsis}
-.ba-name small{color:#5A6B78}
+.ba-name small{color:#4A5B68}
 .ba-sw{position:relative;width:50px;height:30px;flex:none;border-radius:15px;border:0;background:#B7C5CC;cursor:pointer;transition:background .2s}
+.ba-sw::before{content:"";position:absolute;inset:-7px -2px}
 .ba-sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s}
 .ba-sw[aria-checked=true]{background:#08807C}.ba-sw[aria-checked=true]::after{left:23px}
 .ba-btn{border:1px solid #CFE3DF;background:transparent;color:#0B1F33;border-radius:10px;padding:7px 11px;font:600 13px system-ui,sans-serif;cursor:pointer}
 .ba-btn.go{background:#08807C;color:#fff;border-color:#08807C;padding:12px;font-size:15px;width:100%}
 .ba-btn.del{color:#A3261C;border-color:rgba(163,38,28,.4)}
-.ba-more{margin-top:10px;color:#5A6B78;font-size:14px;display:grid;gap:8px}
+.ba-more{margin-top:10px;color:#4A5B68;font-size:14px;display:grid;gap:8px}
 .ba-tpl{display:flex;gap:12px;align-items:flex-start;cursor:pointer;text-align:left;width:100%;background:#FFFFFF;border:1px solid #CFE3DF;border-radius:14px;padding:12px;color:inherit;font:inherit}
-.ba-ico{font-size:26px;line-height:1}
-.ba-tpl p{margin:2px 0 0;color:#5A6B78;font-size:13.5px}
+.ba-ico{flex:none;width:44px;height:44px;border-radius:12px;background:#E6F4F2;color:#08807C;display:grid;place-items:center}
+.ba-tpl p{margin:2px 0 0;color:#4A5B68;font-size:13.5px}
 .ba-form{display:grid;gap:14px}
 .ba-form label{display:grid;gap:6px;font-weight:600;font-size:14px}
 .ba-form input[type=number],.ba-form input[type=time],.ba-form input[type=text],.ba-form select{padding:11px 12px;border-radius:12px;border:1px solid #CFE3DF;background:#FFFFFF;color:#0B1F33;font:inherit}
 .ba-picks{display:grid;gap:4px;max-height:220px;overflow:auto;background:#FFFFFF;border:1px solid #CFE3DF;border-radius:12px;padding:6px}
 .ba-picks label{display:flex;gap:10px;align-items:center;font-weight:500;padding:6px}
 .ba-picks input{width:20px;height:20px;accent-color:#08807C}
-.ba-note{color:#5A6B78;font-size:13px}
+.ba-note{color:#4A5B68;font-size:13px}
 .ba-form label.ba-row{display:flex}
 .ba-err{color:#A3261C;font-size:14px}
 .ba-ok{color:#08807C;font-size:14px}
-.ba-empty{color:#5A6B78;text-align:center;padding:30px 10px}`;
+.ba-empty{color:#4A5B68;text-align:center;padding:30px 10px}`;
 
 let sheet = null, tab = "mine", query = "", openId = null, unsub = null;
 
@@ -175,11 +191,13 @@ function open(t) {
     sheet.setAttribute("role", "dialog");
     sheet.setAttribute("aria-label", "Automations");
     document.body.appendChild(sheet);
+    document.addEventListener("keydown", onKey);
     unsub = B.onHass(() => { if (tab === "mine" && !sheet.querySelector(":focus")) renderMine(true); });
   }
   render();
 }
-function close() { if (unsub) unsub(); unsub = null; if (sheet) sheet.remove(); sheet = null; openId = null; window.__bushbyBack = null; }
+function onKey(e) { if (e.key === "Escape" && sheet) close(); }
+function close() { document.removeEventListener("keydown", onKey); if (unsub) unsub(); unsub = null; if (sheet) sheet.remove(); sheet = null; openId = null; window.__bushbyBack = null; }
 
 function frame(body) {
   sheet.innerHTML = `<div class="ba-card">
@@ -225,13 +243,13 @@ function wire() {
       const b = e.currentTarget, on = b.getAttribute("aria-checked") === "true";
       b.setAttribute("aria-checked", String(!on));
       try { await hass().callService("automation", on ? "turn_off" : "turn_on", { entity_id: id }); }
-      catch (err) { b.setAttribute("aria-checked", String(on)); alertIn(it, "Couldn't change it: " + (err.message || err)); }
+      catch (err) { b.setAttribute("aria-checked", String(on)); alertIn(it, "Couldn't switch it. " + why(err)); }
     };
     it.querySelector("[data-more]").onclick = () => { openId = openId === id ? null : id; renderMine(true); };
     const run = it.querySelector("[data-run]");
     if (run) run.onclick = async () => {
       try { await hass().callService("automation", "trigger", { entity_id: id }); alertIn(it, "Done: it ran just now.", true); }
-      catch (err) { alertIn(it, "Couldn't run it: " + (err.message || err)); }
+      catch (err) { alertIn(it, "Couldn't run it. " + why(err)); }
     };
     const del = it.querySelector("[data-del]");
     if (del) del.onclick = async () => {
@@ -259,12 +277,12 @@ async function loadDesc(id) {
 const CSS_ESC = (s) => (window.CSS && CSS.escape ? CSS.escape(s) : s.replace(/"/g, '\\"'));
 const adminMsg = (err, what) => /401|403|unauthor|admin/i.test(String(err && (err.message || err.body || err.status_code || err)))
   ? `Only a Home Assistant admin can ${what} automations. Ask Bushby Smart Homes, or sign in as an admin.`
-  : `Couldn't ${what} it: ${(err && err.message) || err}`;
+  : `Couldn't ${what} it. ${why(err)}`;
 
 // ---- Add new ----
 function renderAdd() {
   const made = new Set(ents((id) => id.startsWith("automation.")).map((id) => String(hass().states[id].attributes.id || "")).filter((x) => x.startsWith("bushby_")).map((x) => x.split("_").slice(1, -1).join("_")));
-  frame(`<div class="ba-list">${TEMPLATES.map((t, i) => `<button class="ba-tpl" type="button" data-i="${i}"><span class="ba-ico">${t.icon}</span><span><b>${esc(t.title)}</b>${made.has(t.key) ? ` <small class="ba-ok">· set up</small>` : ""}<p>${esc(t.desc)}</p></span></button>`).join("")}</div>`);
+  frame(`<div class="ba-list">${TEMPLATES.map((t, i) => `<button class="ba-tpl" type="button" data-i="${i}"><span class="ba-ico">${icon(t.icon)}</span><span><b>${esc(t.title)}</b>${made.has(t.key) ? ` <small class="ba-ok">· set up</small>` : ""}<p>${esc(t.desc)}</p></span></button>`).join("")}</div>`);
   sheet.querySelectorAll(".ba-tpl").forEach((b) => (b.onclick = () => renderForm(TEMPLATES[+b.dataset.i])));
 }
 async function renderForm(t) {
@@ -284,7 +302,7 @@ async function renderForm(t) {
   const ready = !(t.needs && !t.needs());
   frame(`<div class="ba-list"><div class="ba-form">
     <button class="ba-btn" type="button" data-back style="justify-self:start">‹ Back</button>
-    <div class="ba-row" style="align-items:flex-start"><span class="ba-ico">${t.icon}</span><div><b style="font-size:17px">${esc(t.title)}</b><p class="ba-note" style="margin:4px 0 0">${esc(t.desc)}</p></div></div>
+    <div class="ba-row" style="align-items:flex-start"><span class="ba-ico">${icon(t.icon)}</span><div><b style="font-size:17px">${esc(t.title)}</b><p class="ba-note" style="margin:4px 0 0">${esc(t.desc)}</p></div></div>
     ${ready ? t.fields.map(field).join("") : `<div class="ba-err">This home doesn't know who is in yet. Sign in to the Home Assistant app on each phone first.</div>`}
     <label>Name<input type="text" name="__name" value="${esc(t.title)}" maxlength="80"></label>
     <div class="ba-msg"></div>

@@ -34,7 +34,7 @@ header.bar .btn.bm-open,.bm-view{display:none}
   header.bar .hlogo{height:36px;max-width:100%;object-fit:contain;object-position:left}
   header.bar .clock{margin:0!important}
   .bm-view{display:inline-flex;position:fixed;z-index:5;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 118px);border:1px solid #CFE3DF;border-radius:12px;overflow:hidden;background:#fff}
-  .bm-view button{height:40px;padding:0 14px;border:0;background:#fff;color:#0B1F33;font:700 14px system-ui,sans-serif;cursor:pointer}
+  .bm-view button{height:44px;padding:0 14px;border:0;background:#fff;color:#0B1F33;font:700 14px system-ui,sans-serif;cursor:pointer}
   .bm-view button[aria-pressed=true]{background:#08807C;color:#fff}
 }
 /* a model panel opened from the menu becomes a full-screen page under a Back / Close header */
@@ -54,13 +54,15 @@ body.bm-paged #sheet h2,body.bm-paged .fly h2{padding-right:0}
 .bm-body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:6px 2px 10px}
 .bm-sec h3{margin:18px 0 10px;font-size:15px;font-weight:700;color:#08807C}
 .bm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.bm-tile{display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:76px;text-align:left;padding:12px 14px;border-radius:12px;border:1.5px solid #CFE3DF;border-left:6px solid #4FD1C0;background:#fff;color:#0B1F33;font:inherit;cursor:pointer}
+.bm-tile{display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:76px;text-align:left;padding:12px 14px;border-radius:12px;border:1.5px solid #CFE3DF;background:#fff;box-shadow:0 1px 2px rgba(11,31,51,.06);color:#0B1F33;font:inherit;cursor:pointer}
+.bm-tile:hover{border-color:#08807C}
 .bm-tile b{font-weight:650;font-size:16px;line-height:1.2}
-.bm-tile small{color:#5A6B78;font-size:13.5px;line-height:1.3}
-.bm-tile:focus-visible,.bm-x:focus-visible{outline:3px solid #4FD1C0;outline-offset:2px}`;
+.bm-tile small{color:#4A5B68;font-size:13.5px;line-height:1.3}
+.bm-tile:focus-visible,.bm-x:focus-visible,.bm-back:focus-visible,.bm-open:focus-visible{outline:3px solid #4FD1C0;outline-offset:2px}`;
 
 let sheet = null, page = null, watch = null;
 function close() { if (sheet) sheet.remove(); sheet = null; }
+document.addEventListener("keydown", (e) => { if (e.key !== "Escape") return; if (sheet) close(); else if (page) closePanel(); });
 
 // ---- a model panel shown as a page ----
 const shown = (id) => { const el = document.getElementById(id); return !!el && !el.hidden; };
@@ -110,7 +112,7 @@ function open() {
     const el = $(sel);
     if (!el || el.hidden) return; // the model hides buttons it has nothing to show for
     let line = sub;
-    if (sub === "live") line = (el.textContent || "").replace(/\s+/g, " ").trim() || "";
+    if (sub === "live") line = (el.textContent || "").replace(/⚡/g, "").replace(/\s+/g, " ").trim().replace(/kr(\/kWh)?$/, "kr/kWh now") || "";
     let grp = groups.find((x) => x.g === g);
     if (!grp) groups.push((grp = { g, tiles: [] }));
     grp.tiles.push(`<button class="bm-tile" type="button" data-i="${i}"><b>${esc(title)}</b>${line ? `<small>${esc(line)}</small>` : ""}</button>`);
@@ -123,6 +125,7 @@ function open() {
     <div class="bm-body">${groups.map((x) => `<section class="bm-sec"><h3>${esc(x.g)}</h3><div class="bm-grid">${x.tiles.join("")}</div></section>`).join("")}</div></div>`;
   document.body.appendChild(sheet);
   sheet.querySelector(".bm-x").onclick = close;
+  sheet.querySelector(".bm-x").focus({ preventScroll: true });
   sheet.onclick = (e) => { if (e.target === sheet) close(); };
   sheet.querySelectorAll(".bm-tile").forEach((t) => (t.onclick = () => {
     const [, sel, title, , how] = ITEMS[+t.dataset.i];

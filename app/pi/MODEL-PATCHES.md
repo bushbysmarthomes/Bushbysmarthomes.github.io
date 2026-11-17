@@ -32,3 +32,11 @@ Tested 14 Nov 2026 by clearing every canvas and forcing a context loss and resto
 
 Header rules (14 Nov 2026): logo and clock have no box, no background and no glow, and are drawn heavy
 (thickened logo PNG, 1.6 px text stroke on the clock). The live status is plain small text with a coloured dot.
+
+## 2026-11-17 design review fixes (home.html)
+- Night look: dim only the header buttons; logo, clock and the "Live from Home Assistant" line get a light backing so they stay readable.
+- Pins: 44px hit area (`.dev::before`), soft offset shadow instead of a coloured glow, focus rings on buttons, chips and pins.
+- Room chips: right-edge fade, no bare counts (count moves to aria-label).
+- Climate: "now" uses the live sensor, printer sensors filtered out, no "readings" headline.
+- Electricity: unit on the button ("kr/kWh"), plain wording, a "Try again" state after 15 s with no prices.
+- Esc closes any open panel. Plain-English pin states ("Online", "No movement").
