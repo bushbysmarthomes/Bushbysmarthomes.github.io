@@ -40,3 +40,15 @@ Header rules (14 Nov 2026): logo and clock have no box, no background and no glo
 - Climate: "now" uses the live sensor, printer sensors filtered out, no "readings" headline.
 - Electricity: unit on the button ("kr/kWh"), plain wording, a "Try again" state after 15 s with no prices.
 - Esc closes any open panel. Plain-English pin states ("Online", "No movement").
+
+## 2026-11-17/18 look and movement (home.html)
+- Colour textures: set `texture.encoding = THREE.sRGBEncoding` on every canvas colour texture (floorboards, brick). Without it the wood and brick look washed out. No ACES tone mapping.
+- Evening light: one low warm `SpotLight` with shadows from a corner of the home, plus a cool fill from the two point lights above; sky light cut back as evening comes in. Lit lamps throw a wider pool after dark (range 3.2 m to 5.6 m).
+- Baked shading (optional, per home): a Blender ambient-occlusion bake laid on as `aoMap` with a planar `uv2` on each floor (floors `aoMapIntensity` 1.5) and a 5-cells-per-piece atlas on the walls (1.6, applied only if the wall count matches). Each home needs its own bake; never copy another home's pictures.
+- Walls: every wall and window piece is two boxes, full height and a low kerb. The join sits where the "near side" line crosses the wall, so a wall opens centimetre by centimetre with a flat top and an upright edge. Fixtures on walls sink as whole pieces. Never slope the tops.
+- Phone pins: 20 px pins with a 44 px press area on screens up to 760 px; labels that only say "all normal" (Closed, Docked, Online, No movement, Done) are hidden on a phone; a tap goes to the nearest pin.
+- Room names step up or down (0, 18, -18, 34, -34, 50, -50 px) out of the way of pins and their labels, easing so they don't jump. Measured sizes are cached and cleared on resize.
+- Price button: wrap the price and unit in one span, or the button's gap splits "kr" and "/kWh".
+
+The cleaned customer starting file (no personal panels, makes or names) is kept on the laptop, not here,
+because it still holds a real floor plan: Models\Template - in-home model\home.html with a README of what to set per home.
