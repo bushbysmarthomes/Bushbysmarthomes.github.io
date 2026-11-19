@@ -1,6 +1,8 @@
 # Bushby status board: one package per home (generic, copy as-is).
 # Every 15 minutes the hub tells the status board it is alive, and lists anything that needs attention:
 #   - Zigbee, Matter and Thread devices that have dropped off (unavailable)
+#     Motion and presence sensors only count after 14 days of silence: they only talk when they see movement,
+#     so an empty room (or a week away) makes them look offline after 6 hours when they are fine (19 Nov 2026).
 #   - batteries under 20 %
 #   - no successful automatic backup in the last 48 hours
 # All fine  -> "ok" ping.  Anything wrong -> "fail" ping with the list.  No ping at all for 45 min -> board shows the hub as down.
@@ -33,7 +35,7 @@ rest_command:
 automation:
   - id: bushby_status_ping
     alias: "Bushby: status ping to the status board"
-    description: "Every 15 minutes: tells the Bushby status board the hub is alive and lists offline devices, batteries under 20% and a missing backup."
+    description: "Every 15 minutes: tells the Bushby status board the hub is alive and lists offline devices (motion sensors only after 14 days of silence), batteries under 20% and a missing backup."
     mode: single
     trigger:
       - platform: time_pattern
@@ -44,13 +46,23 @@ automation:
       battery_limit: 20
       radios: ['zha', 'matter', 'mqtt']   # device integrations to watch (ZHA Zigbee, Matter/Thread, Zigbee2MQTT)
       backup_entity: sensor.backup_last_successful_automatic_backup
+      motion_quiet_days: 14   # a motion/presence sensor only counts as offline after this many days of silence
       offline: >-
         {% set ns = namespace(l=[]) %}
         {% for i in radios %}
           {% for d in integration_entities(i)
                | select('is_state', 'unavailable')
                | map('device_id') | reject('none') | unique %}
-            {% set ns.l = ns.l + [device_attr(d, 'name_by_user') or device_attr(d, 'name')] %}
+            {% set m = namespace(e=none) %}
+            {% for e in device_entities(d) if e.startswith('binary_sensor.')
+                 and state_attr(e, 'device_class') in ['motion', 'occupancy', 'presence'] %}
+              {% set m.e = e %}
+            {% endfor %}
+            {% set quiet = m.e is not none and is_state(m.e, 'unavailable')
+                 and (now() - states[m.e].last_changed).total_seconds() < motion_quiet_days * 86400 %}
+            {% if not quiet %}
+              {% set ns.l = ns.l + [device_attr(d, 'name_by_user') or device_attr(d, 'name')] %}
+            {% endif %}
           {% endfor %}
         {% endfor %}
         {{ ns.l | unique | list }}
