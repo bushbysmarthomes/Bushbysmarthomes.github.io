@@ -17,8 +17,9 @@
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon-v2.png">
 <link rel="icon" type="image/png" href="../icons/icon-192-v2.png">
 <link rel="preload" href="../fonts/nunito-sans-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="status.css?v=20261119b">
-<script src="status.js?v=20261119b" defer></script>
+<link rel="stylesheet" href="status.css?v=20261119d">
+<script src="europe.js?v=20261119d" defer></script>
+<script src="status.js?v=20261119d" defer></script>
 </head>
 <body>
 <header class="top">
@@ -46,18 +47,39 @@
 
   <p class="notice" id="notice" hidden></p>
 
-  <section class="problems" id="problems" aria-label="Homes that need you"></section>
+  <div class="board">
+    <section class="map" id="map" aria-label="Map of homes" hidden>
+      <div class="map-frame" id="map-frame" tabindex="-1">
+        <svg id="map-svg" preserveAspectRatio="none" aria-hidden="true"><path class="land" id="map-land"/></svg>
+        <div class="markers" id="markers"></div>
+        <button class="map-reset" id="map-reset" type="button" hidden>Show all homes</button>
+      </div>
+      <ul class="legend" aria-label="Map key">
+        <li><span class="key ok"></span>All good</li>
+        <li><span class="key warn"></span>Needs attention or late</li>
+        <li><span class="key down"></span>Hub offline</li>
+        <li><span class="key idle"></span>Not reporting</li>
+      </ul>
+      <p class="map-hint" id="map-hint" hidden></p>
+      <p class="sr-only" id="map-live" aria-live="polite"></p>
+    </section>
 
-  <details class="group" id="fine-group" hidden>
-    <summary><span class="group-dot ok" aria-hidden="true"></span><span id="fine-title"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
-    <ul class="rows" id="fine-list"></ul>
-  </details>
+    <div class="list">
+      <section class="problems" id="problems" aria-label="Homes that need you"></section>
 
-  <details class="group" id="idle-group" hidden>
-    <summary><span class="group-dot idle" aria-hidden="true"></span><span id="idle-title"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
-    <p class="group-hint">New checks wait for the hub's first check-in. Check the hub has its two ping lines in secrets.yaml and has been restarted.</p>
-    <ul class="rows" id="idle-list"></ul>
-  </details>
+    <details class="group" id="fine-group" hidden>
+      <summary><span class="group-dot ok" aria-hidden="true"></span><span id="fine-title"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+      <ul class="rows" id="fine-list"></ul>
+    </details>
+
+    <details class="group" id="idle-group" hidden>
+      <summary><span class="group-dot idle" aria-hidden="true"></span><span id="idle-title"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+      <p class="group-hint">New checks wait for the hub's first check-in. Check the hub has its two ping lines in secrets.yaml and has been restarted.</p>
+      <ul class="rows" id="idle-list"></ul>
+    </details>
+
+    </div>
+  </div>
 
   <section class="empty" id="empty" hidden>
     <h2>Add your Healthchecks key</h2>

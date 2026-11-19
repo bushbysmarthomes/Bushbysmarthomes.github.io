@@ -18,7 +18,8 @@
     idle: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM8 12h8"
   };
 
-  var state = { keys: [], homes: [], loadedAt: null, failedAt: null, loading: false, errors: [], project: "all" };
+  var state = { keys: [], homes: [], loadedAt: null, failedAt: null, loading: false, errors: [], project: "all", mapView: null };
+  var mapHomes = [];
   var bodies = {};          // uuid -> { n, text }  (full keys only)
   var bodyRequests = {};    // uuid -> promise
   var lastHeadline = "";
@@ -253,7 +254,7 @@
     $("empty").hidden = hasKeys;
     $("summary").hidden = !hasKeys;
     if (!hasKeys) {
-      ["filters", "notice", "fine-group", "idle-group"].forEach(function (id) { $(id).hidden = true; });
+      ["filters", "map", "notice", "fine-group", "idle-group"].forEach(function (id) { $(id).hidden = true; });
       $("problems").textContent = "";
       return;
     }
@@ -297,10 +298,12 @@
       })).forEach(function (o) {
         filters.appendChild(el("button", {
           class: "chip", type: "button", "aria-pressed": String(state.project === o[0]),
-          onclick: function () { state.project = o[0]; render(); }
+          onclick: function () { state.project = o[0]; state.mapView = null; render(); }
         }, [o[1], el("span", { class: "n", text: String(o[2]) })]));
       });
     }
+
+    renderMap(homes);
 
     // Notices
     var notes = state.errors.slice();
@@ -330,7 +333,7 @@
     var now = Date.now();
     list.sort(byStatusThenName).forEach(function (h) {
       var c = h.check;
-      ul.appendChild(el("li", null, [
+      ul.appendChild(el("li", { id: homeId(h), tabindex: "-1" }, [
         el("span", { class: "name", text: c.name || "(unnamed)" }),
         el("span", { class: "ago", text: c.last_ping ? ago(c.last_ping, now) : (c.status === "paused" ? "paused" : "no check-ins") }),
         el("span", { class: "sub" }, metaBits(h, false))
@@ -414,6 +417,160 @@
     return el("div", { class: "report" }, rows);
   }
 
+  /* ---------- map ---------- */
+  var MAP_DEFAULT = { x: -1900, y: -1750, w: 3700, h: 3300 }; // most of Europe, in projected km
+  var MAP_WORST = { down: 0, warn: 1, idle: 2, ok: 3 };
+  var MAP_WORD = { down: "hub offline", warn: "needs attention or late", idle: "not reporting", ok: "all good" };
+  var measureCtx = null;
+  function textWidth(t) {
+    try {
+      measureCtx = measureCtx || document.createElement("canvas").getContext("2d");
+      measureCtx.font = "800 13px \"Nunito Sans\", system-ui, sans-serif";
+      return measureCtx.measureText(t).width;
+    } catch (e) { return t.length * 7.6; }
+  }
+
+  function parseLoc(desc) {
+    var m = /\bloc\s*[:=]?\s*(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)/i.exec(String(desc || ""));
+    if (!m) return null;
+    var lat = +m[1], lon = +m[2];
+    return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 ? [lat, lon] : null;
+  }
+  function project(lat, lon) { // Lambert azimuthal equal-area, same as europe.js
+    var c = window.BUSHBY_EUROPE.center, R = 6371, rad = Math.PI / 180;
+    var l = lon * rad, p = lat * rad, l0 = c[0] * rad, p0 = c[1] * rad;
+    var k = Math.sqrt(2 / (1 + Math.sin(p0) * Math.sin(p) + Math.cos(p0) * Math.cos(p) * Math.cos(l - l0)));
+    return [R * k * Math.cos(p) * Math.sin(l - l0), -R * k * (Math.cos(p0) * Math.sin(p) - Math.sin(p0) * Math.cos(p) * Math.cos(l - l0))];
+  }
+  function mapStatus(kind) { return kind === "offline" ? "down" : kind === "attention" || kind === "late" ? "warn" : kind === "idle" ? "idle" : "ok"; }
+  function fitBox(b, W, H) {
+    var cx = b.x + b.w / 2, cy = b.y + b.h / 2, w = b.w, h = b.h;
+    if (w / h < W / H) w = h * W / H; else h = w * H / W;
+    return { x: cx - w / 2, y: cy - h / 2, w: w, h: h };
+  }
+  function boxAround(points, pad, minSpan) {
+    var xs = points.map(function (p) { return p.x; }), ys = points.map(function (p) { return p.y; });
+    var x0 = Math.min.apply(null, xs) - pad, x1 = Math.max.apply(null, xs) + pad;
+    var y0 = Math.min.apply(null, ys) - pad, y1 = Math.max.apply(null, ys) + pad;
+    if (x1 - x0 < minSpan) { var cx = (x0 + x1) / 2; x0 = cx - minSpan / 2; x1 = cx + minSpan / 2; }
+    if (y1 - y0 < minSpan) { var cy = (y0 + y1) / 2; y0 = cy - minSpan / 2; y1 = cy + minSpan / 2; }
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+
+  function renderMap(homes) {
+    var section = $("map");
+    mapHomes = homes;
+    if (!window.BUSHBY_EUROPE || !homes.length) { section.hidden = true; return; }
+    section.hidden = false;
+    var land = $("map-land");
+    if (!land.getAttribute("d")) land.setAttribute("d", window.BUSHBY_EUROPE.path);
+
+    var frame = $("map-frame"), W = frame.clientWidth || 360, H = frame.clientHeight || W * 0.75;
+    var pts = [], missing = 0;
+    homes.forEach(function (h) {
+      var loc = parseLoc(h.check.desc);
+      if (!loc) { missing++; return; }
+      var xy = project(loc[0], loc[1]);
+      pts.push({ h: h, x: xy[0], y: xy[1], s: mapStatus(h.kind) });
+    });
+
+    var view = fitBox(state.mapView || (pts.length ? boxAround(pts, 320, 1100) : MAP_DEFAULT), W, H);
+    $("map-svg").setAttribute("viewBox", [view.x, view.y, view.w, view.h].map(Math.round).join(" "));
+    var reset = $("map-reset");
+    reset.hidden = !state.mapView;
+    if (state.mapView) {
+      var away = pts.filter(function (p) {
+        return p.s !== "ok" && (p.x < view.x || p.x > view.x + view.w || p.y < view.y || p.y > view.y + view.h);
+      });
+      var awayDown = away.filter(function (p) { return p.s === "down"; }).length;
+      reset.textContent = !away.length ? "Show all homes" :
+        "Show all \u00b7 " + (awayDown ? awayDown + " offline" : away.length + " need you") + " elsewhere";
+    }
+
+    // Group dots that would overlap on screen; the group takes its worst status.
+    var groups = [];
+    pts.forEach(function (p) {
+      p.px = (p.x - view.x) / view.w * W; p.py = (p.y - view.y) / view.h * H;
+      if (p.px < -10 || p.px > W + 10 || p.py < -10 || p.py > H + 10) return;
+      var g = null;
+      for (var i = 0; i < groups.length && !g; i++) {
+        var q = groups[i];
+        if (Math.abs(q.px - p.px) < 26 && Math.abs(q.py - p.py) < 26) g = q;
+      }
+      if (g) { g.items.push(p); if (MAP_WORST[p.s] < MAP_WORST[g.s]) g.s = p.s; }
+      else groups.push({ px: p.px, py: p.py, s: p.s, items: [p] });
+    });
+    groups.sort(function (a, b) { return MAP_WORST[a.s] - MAP_WORST[b.s]; }); // worst first in tab order; z-index puts it on top
+
+    // Place name labels beside problem dots without covering another dot or label.
+    var placed = [];
+    function hits(r) {
+      if (r.x0 < 2 || r.x1 > W - 2 || r.y0 < 2 || r.y1 > H - 2) return true;
+      if (state.mapView && r.x1 > W - 270 && r.y1 > H - 64) return true; // keep clear of the "Show all" button
+      return groups.some(function (q) { return q.px + 13 > r.x0 && q.px - 13 < r.x1 && q.py + 13 > r.y0 && q.py - 13 < r.y1 && q !== r.g; }) ||
+        placed.some(function (o) { return o.x0 < r.x1 && o.x1 > r.x0 && o.y0 < r.y1 && o.y1 > r.y0; });
+    }
+    groups.slice().sort(function (a, b) { return MAP_WORST[a.s] - MAP_WORST[b.s]; }).forEach(function (g) {
+      if (g.s === "ok") return;
+      var names = g.items.map(function (p) { return p.h.check.name || "Home"; });
+      g.text = names.length === 1 ? names[0] : names.length === 2 && (names[0] + ", " + names[1]).length <= 26 ? names[0] + ", " + names[1] : names.length + " homes";
+      var w = textWidth(g.text) + 20, half = 12, gap = g.items.length === 1 ? (g.s === "down" ? 15 : 12) : 17;
+      var right = { g: g, x0: g.px + gap, x1: g.px + gap + w, y0: g.py - half, y1: g.py + half };
+      var left = { g: g, x0: g.px - gap - w, x1: g.px - gap, y0: g.py - half, y1: g.py + half };
+      if (!hits(right)) { g.side = "right"; placed.push(right); }
+      else if (!hits(left)) { g.side = "left"; placed.push(left); }
+    });
+
+    var box = $("markers");
+    box.textContent = "";
+    groups.forEach(function (g, idx) {
+      var single = g.items.length === 1, h = g.items[0].h;
+      var counts = {};
+      g.items.forEach(function (p) { counts[p.s] = (counts[p.s] || 0) + 1; });
+      var label = single
+        ? (h.check.name || "Home") + ": " + STATE_LABEL[h.kind] + ". Show this home."
+        : g.items.length + " homes here: " + ["down", "warn", "idle", "ok"].filter(function (k) { return counts[k]; })
+            .map(function (k) { return counts[k] + " " + MAP_WORD[k]; }).join(", ") + ". Zoom in.";
+      var kids = [el("span", { class: "dot " + g.s, text: single ? "" : String(g.items.length) })];
+      if (g.side) kids.push(el("span", { class: "label", "aria-hidden": "true", text: g.text }));
+      var b = el("button", {
+        class: "marker" + (single ? "" : " cluster") + (single && g.s === "down" ? " single-down" : "") + (g.side === "left" ? " flip" : ""),
+        type: "button", "aria-label": label,
+        onclick: function () {
+          if (single) { focusHome(h); return; }
+          state.mapView = boxAround(g.items, 150, 500);
+          renderMap(mapHomes);
+          $("map-live").textContent = "Zoomed in to " + g.items.length + " homes.";
+          $("map-reset").focus();
+        }
+      }, kids);
+      b.style.zIndex = String(groups.length - idx);
+      b.style.left = (g.px / W * 100) + "%";
+      b.style.top = (g.py / H * 100) + "%";
+      box.appendChild(b);
+    });
+
+    var hint = $("map-hint");
+    hint.hidden = !missing;
+    hint.textContent = "";
+    if (missing) {
+      hint.appendChild(document.createTextNode((missing === 1 ? "1 home isn't" : missing + " homes aren't") + " on the map yet. In Healthchecks.io, add its town's position to the check's description, like "));
+      hint.appendChild(el("code", { text: "loc 55.7,12.5" }));
+      hint.appendChild(document.createTextNode(" (latitude, longitude, one decimal)."));
+    }
+  }
+
+  function focusHome(h) {
+    var target = document.getElementById(homeId(h));
+    if (!target) return;
+    var group = target.closest("details");
+    if (group) group.open = true;
+    target.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+    if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+    target.focus({ preventScroll: true });
+    target.classList.remove("flash"); void target.offsetWidth; target.classList.add("flash");
+  }
+
   /* ---------- settings ---------- */
   function armed(btn, label, armedLabel, action) {
     // Two-tap confirm: first tap arms the button for 4 seconds, second tap acts.
@@ -473,10 +630,15 @@
     "bsh-demo2": "Home Assistant 2026.11.1\nDevices offline (0): none\nBatteries under 20% (1): Kitchen leak sensor battery (12%)\nBackup: Last backup 61 hours ago",
     "bsh-demo3": "Home Assistant 2026.11.0\nDevices offline (0): none\nBatteries under 20% (0): none\nBackup: OK"
   };
+  var DEMO_LOC = {
+    "bsh-demo1": "loc 53.5,-2.2", "bsh-demo2": "loc 51.5,-2.6", "bsh-demo3": "loc 45.8,4.8",
+    "bsh-demo4": "loc 53.6,10.0", "bsh-demo5": "loc 39.5,-0.4", "bsh-demo6": "loc 59.9,10.7",
+    "Copenhagen": "loc 55.7,12.5", "Worthing": "loc 50.8,-0.4"
+  };
   function demoData() {
     var now = Date.now(), iso = function (minAgo) { return new Date(now - minAgo * 60000).toISOString(); };
     var mk = function (name, status, lastMin, tags, n) {
-      return { check: { name: name, tags: tags, status: status, last_ping: lastMin === null ? null : iso(lastMin), timeout: 900, grace: 2700, n_pings: n, uuid: "demo-" + name },
+      return { check: { name: name, tags: tags, desc: DEMO_LOC[name] || "", status: status, last_ping: lastMin === null ? null : iso(lastMin), timeout: 900, grace: 2700, n_pings: n, uuid: "demo-" + name },
         project: tags.indexOf("Own") >= 0 ? "Own" : "Customers", readOnly: false, key: "demo" };
     };
     return { errors: [], lists: [[
@@ -500,12 +662,27 @@
     $("empty-add").addEventListener("click", openSettings);
     $("close-settings").addEventListener("click", function () { $("settings").close(); });
     $("settings-form").addEventListener("submit", addKey);
+    $("map-reset").addEventListener("click", function () {
+      state.mapView = null; renderMap(mapHomes);
+      $("map-live").textContent = "Showing all homes.";
+      var first = document.querySelector(".marker");
+      (first || $("map-frame")).focus();
+    });
+    if (window.ResizeObserver) {
+      var lastW = 0;
+      new ResizeObserver(function () {
+        var w = $("map-frame").clientWidth;
+        if (w && w !== lastW) { lastW = w; renderMap(mapHomes); }
+      }).observe($("map-frame"));
+    }
     armed($("forget-all"), "Forget all keys on this device", "Tap again to forget every key", function () {
       state.keys = []; state.homes = []; state.loadedAt = null; bodies = {}; lastHeadline = ""; forget(STORE_KEYS);
       renderKeys(); render();
     });
     document.addEventListener("visibilitychange", function () {
-      if (document.visibilityState === "visible" && (!state.loadedAt || Date.now() - state.loadedAt > 30000)) refresh();
+      if (document.visibilityState !== "visible") return;
+      if (state.mapView) { state.mapView = null; renderMap(mapHomes); }
+      if (!state.loadedAt || Date.now() - state.loadedAt > 30000) refresh();
     });
     setInterval(function () { if (document.visibilityState === "visible") refresh(); }, REFRESH_MS);
     render();
