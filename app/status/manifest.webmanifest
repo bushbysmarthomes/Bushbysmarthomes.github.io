@@ -1,0 +1,17 @@
+{
+  "name": "Bushby Status",
+  "short_name": "Status",
+  "description": "Health of every Bushby home at a glance",
+  "id": "/app/status/",
+  "start_url": "/app/status/",
+  "scope": "/app/status/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FBFDFC",
+  "theme_color": "#08807C",
+  "icons": [
+    { "src": "../icons/icon-192-v2.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "../icons/icon-512-v2.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "../icons/icon-maskable-512-v3.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
