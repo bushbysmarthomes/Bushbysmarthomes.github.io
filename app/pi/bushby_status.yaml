@@ -6,7 +6,9 @@
 # All fine  -> "ok" ping.  Anything wrong -> "fail" ping with the list.  No ping at all for 45 min -> board shows the hub as down.
 #
 # Install:
-#   1. Copy this file to /config/packages/bushby-status.yaml
+#   1. Copy this file to /config/packages/bushby_status.yaml
+#      Keep this file name: lower case with underscores. A hyphen makes Home Assistant refuse the package
+#      ("invalid slug"), and it only says so in the core log (ha core logs).
 #      (configuration.yaml needs:  homeassistant:  packages: !include_dir_named packages)
 #   2. Add two lines to /config/secrets.yaml (the home's own ping address from the status board; never put it in Notion or GitHub):
 #        bushby_status_url: https://hc-ping.com/<this home's ping id>
