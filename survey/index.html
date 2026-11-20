@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FBFDFC">
+<title>Bushby Smart Homes · Your smart home</title>
+<link rel="preload" href="../fonts/nunito-sans-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="robots" content="noindex">
+<style>
+  @font-face{font-family:"Nunito Sans";src:url(../fonts/nunito-sans-latin-wght.woff2) format("woff2");font-weight:200 1000;font-display:swap}
+  .home{display:block;border-radius:8px}
+  /* Bushby light brand: dark teal #08807C, light teal #4FD1C0 (highlights only), navy #0B1F33 on a light background */
+  :root{
+    --bg:#FBFDFC; --card:#FFFFFF; --ink:#0B1F33; --muted:#4A6072; --rule:#CFE7E4; --tint:#EAF5F3;
+    --teal:#08807C; --teal-dk:#066B67; --light:#4FD1C0; --err:#B3261E;
+    --ease:cubic-bezier(.16,1,.3,1);
+  }
+  *{box-sizing:border-box}
+  ::selection{background:#BFEDE6;color:var(--ink)}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Nunito Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased;caret-color:var(--teal)}
+  .wrap{max-width:560px;margin:0 auto;padding:20px 20px 132px;min-height:100vh}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:14px}
+  .logo{height:46px;width:auto;display:block;margin-left:-4px}
+  .step-count{font-size:13px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+  .bar{height:4px;border-radius:99px;background:var(--tint);margin:0 0 30px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;border-radius:99px;background:var(--teal);transition:width .45s var(--ease)}
+  h1{font-weight:800;font-size:32px;line-height:1.12;letter-spacing:-.025em;margin:10px 0 12px;text-wrap:balance}
+  h2{font-weight:800;font-size:25px;line-height:1.2;letter-spacing:-.02em;margin:0 0 6px;text-wrap:balance}
+  h1 em{font-style:normal;color:var(--teal)}
+  p.lead{color:var(--muted);margin:0 0 22px;max-width:62ch}
+  .step{display:none}
+  .step.on{display:block;animation:in .35s var(--ease)}
+  @keyframes in{from{opacity:.001;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.step.on{animation:none}.bar i{transition:none}}
+  label.f{display:block;font-size:14px;font-weight:600;margin:22px 0 8px}
+  label.f small{color:var(--muted);font-weight:400}
+  input[type=text],input[type=email],input[type=tel],textarea{
+    width:100%;padding:14px;border:1px solid var(--rule);border-radius:12px;background:var(--card);
+    font:inherit;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s}
+  input::placeholder,textarea::placeholder{color:#5B7385}
+  input:focus,textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px #BFEDE6}
+  textarea{min-height:100px;resize:vertical}
+  .opts{display:grid;gap:10px}
+  .opts.two{grid-template-columns:1fr 1fr}
+  .opt{display:flex;gap:12px;align-items:center;padding:14px;border:1px solid var(--rule);border-radius:14px;
+    background:var(--card);cursor:pointer;user-select:none;transition:border-color .15s,background .15s,box-shadow .15s}
+  .opt:hover{border-color:#9FD6CF}
+  .opt input{position:absolute;opacity:0;pointer-events:none}
+  .opt .ic{width:26px;height:26px;display:grid;place-items:center;flex:none}
+  .opt .ic svg,.ico svg{width:22px;height:22px;stroke:var(--teal);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .opt .t{font-weight:600}
+  .opt .d{font-size:13px;color:var(--muted)}
+  .opt .tick{margin-left:auto;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--rule);flex:none;display:grid;place-items:center}
+  .opt .tick svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+  .opt.sel{border-color:var(--teal);background:var(--tint);box-shadow:0 2px 10px rgba(11,31,51,.08)}
+    .opt.sel .tick{background:var(--teal);border-color:var(--teal)}.opt.sel .tick svg{opacity:1}
+  .opt:focus-visible,.chip:focus-visible,.drop:focus-visible,button:focus-visible{outline:3px solid var(--light);outline-offset:2px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:10px 16px;border:1px solid var(--rule);border-radius:999px;background:var(--card);cursor:pointer;font-weight:600;font-size:15px;transition:background .15s,border-color .15s,color .15s}
+  .chip:hover{border-color:#9FD6CF}
+  .chip.sel{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .promise{display:flex;gap:12px;margin-top:22px;padding:14px 16px;border-radius:14px;background:var(--tint);border:1px solid var(--rule);font-size:14px;color:var(--ink)}
+  .promise .ico{flex:none;margin-top:1px}
+  .promise b{display:block;margin-bottom:2px}
+  .drop{border:1.5px dashed #9FD6CF;border-radius:14px;padding:18px;text-align:center;background:var(--card);cursor:pointer;transition:background .15s}
+  .drop:hover{background:var(--tint)}
+  .drop b{display:block;margin-bottom:2px;color:var(--teal)}
+  .drop span{font-size:13px;color:var(--muted)}
+  .thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+  .thumbs div{position:relative;height:80px;border-radius:10px;overflow:hidden;background:var(--tint);font-size:12px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;color:var(--muted)}
+  .thumbs img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .thumbs button{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:#0B1F33;cursor:pointer;display:grid;place-items:center;padding:0}
+  .thumbs button svg{width:12px;height:12px;stroke:#fff;stroke-width:2.5;stroke-linecap:round}
+  .note{font-size:13px;color:var(--muted);margin-top:12px}
+  .err{color:var(--err);font-size:14px;font-weight:600;margin-top:14px;min-height:1em}
+  .nav{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(rgba(251,253,252,0),var(--bg) 32%);padding:26px 20px calc(18px + env(safe-area-inset-bottom))}
+  .nav .in{max-width:560px;margin:0 auto;display:flex;gap:10px}
+  button.btn{flex:1;padding:16px;border-radius:14px;border:0;font:700 16px "Nunito Sans",sans-serif;cursor:pointer;transition:background .15s,transform .1s}
+  button.btn:active{transform:scale(.985)}
+  .primary{background:var(--teal);color:#fff;box-shadow:0 6px 16px rgba(11,31,51,.16)}
+  .primary:hover{background:var(--teal-dk)}
+  .primary:disabled{opacity:.55;cursor:default}
+  .ghost{background:var(--card);color:var(--ink);border:1px solid var(--rule)!important;flex:0 0 96px!important}
+  ol.how{list-style:none;padding:0;margin:26px 0;display:grid;gap:10px}
+  ol.how li{display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:14px;background:var(--card);border:1px solid var(--rule)}
+  ol.how .n{width:30px;height:30px;border-radius:50%;background:var(--teal);color:#fff;font-weight:800;font-size:14px;display:grid;place-items:center;flex:none}
+  ol.how strong{display:block}
+  ol.how span{color:var(--muted);font-size:15px}
+  .done{text-align:center;padding-top:34px}
+  .done .big{width:72px;height:72px;border-radius:50%;margin:0 auto 10px;display:grid;place-items:center;background:var(--tint)}
+  .done .big svg{width:34px;height:34px;stroke:var(--teal);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .done .big.bad{background:#FBE9E7}.done .big.bad svg{stroke:var(--err)}
+  .done .big.wait svg{animation:spin 1.4s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .preview{background:var(--tint);border:1px solid var(--rule);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600;color:var(--teal-dk);margin-bottom:16px;display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="home" href="../" aria-label="Bushby Smart Homes home page"><svg class="logo" role="img" aria-label="Bushby Smart Homes" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 110" ><g transform="translate(6,12)"><g fill="none" stroke="#0b1f33" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter"><path d="M8 46 L40 16 L72 46"/><path d="M20 46 V70 H60 V46"/></g><path d="M33.28 47.78 A9.5 9.5 0 0 1 46.72 47.78" fill="none" stroke="#08807c" stroke-width="3.4" stroke-linecap="round"/><path d="M28.69 43.19 A16 16 0 0 1 51.31 43.19" fill="none" stroke="#08807c" stroke-width="3.4" stroke-linecap="round"/><circle cx="40" cy="54.5" r="3.4" fill="#08807c"/></g>
+<path d="M106.384765625 60.0H119.94140625C127.224609375 60.0 131.15625 56.326171875 131.15625 50.9765625C131.15625 46.421875 128.1484375 43.671875 124.23828125 43.306640625V43.263671875C127.76171875 42.3828125 129.974609375 39.912109375 129.974609375 36.216796875C129.974609375 31.296875 126.107421875 27.98828125 119.2109375 27.98828125H106.384765625ZM112.8515625 54.80078125V46.271484375H119.125C122.455078125 46.271484375 124.41015625 47.947265625 124.41015625 50.611328125C124.41015625 53.275390625 122.412109375 54.80078125 119.017578125 54.80078125ZM112.8515625 41.287109375V33.1875H118.716796875C121.6171875 33.1875 123.400390625 34.755859375 123.400390625 37.248046875C123.400390625 39.71875 121.6171875 41.287109375 118.716796875 41.287109375Z M148.849609375 60.515625C156.841796875 60.515625 162.041015625 55.767578125 162.041015625 48.849609375V27.98828125H155.57421875V48.3125C155.57421875 52.09375 152.931640625 54.80078125 148.849609375 54.80078125C144.7890625 54.80078125 142.146484375 52.072265625 142.146484375 48.3125V27.98828125H135.6796875V48.849609375C135.6796875 55.7890625 140.857421875 60.515625 148.849609375 60.515625Z M179.841796875 60.515625C187.7265625 60.515625 192.5390625 56.712890625 192.5390625 50.546875C192.5390625 45.734375 189.509765625 42.919921875 182.677734375 41.48046875L179.60546875 40.814453125C175.673828125 39.955078125 174.083984375 38.859375 174.083984375 36.8828125C174.083984375 34.541015625 176.3828125 32.908203125 179.6484375 32.908203125C183.0859375 32.908203125 185.341796875 34.77734375 185.578125 37.806640625H191.765625C191.572265625 31.361328125 186.99609375 27.47265625 179.626953125 27.47265625C172.34375 27.47265625 167.466796875 31.3828125 167.466796875 37.205078125C167.466796875 41.78125 170.5390625 44.724609375 176.876953125 46.099609375L180.25 46.830078125C184.310546875 47.7109375 185.986328125 48.9140625 185.986328125 50.9765625C185.986328125 53.46875 183.55859375 55.080078125 179.884765625 55.080078125C175.78125 55.080078125 173.310546875 53.017578125 173.224609375 49.494140625H166.84375C166.84375 56.455078125 171.634765625 60.515625 179.841796875 60.515625Z M197.427734375 60.0H204.044921875V46.5078125H217.64453125V60.0H224.240234375V27.98828125H217.64453125V40.8359375H204.044921875V27.98828125H197.427734375Z M230.03125 60.0H243.587890625C250.87109375 60.0 254.802734375 56.326171875 254.802734375 50.9765625C254.802734375 46.421875 251.794921875 43.671875 247.884765625 43.306640625V43.263671875C251.408203125 42.3828125 253.62109375 39.912109375 253.62109375 36.216796875C253.62109375 31.296875 249.75390625 27.98828125 242.857421875 27.98828125H230.03125ZM236.498046875 54.80078125V46.271484375H242.771484375C246.1015625 46.271484375 248.056640625 47.947265625 248.056640625 50.611328125C248.056640625 53.275390625 246.05859375 54.80078125 242.6640625 54.80078125ZM236.498046875 41.287109375V33.1875H242.36328125C245.263671875 33.1875 247.046875 34.755859375 247.046875 37.248046875C247.046875 39.71875 245.263671875 41.287109375 242.36328125 41.287109375Z M269.05859375 60.0H275.50390625V48.033203125L287.169921875 27.98828125H279.62890625L274.365234375 37.591796875C273.65625 38.880859375 272.96875 40.169921875 272.32421875 41.458984375C271.63671875 40.169921875 270.94921875 38.880859375 270.21875 37.591796875L264.783203125 27.98828125H257.19921875L269.05859375 48.033203125Z" fill="#0b1f33"/>
+<path d="M110.208251953125 86.177001953125C112.686279296875 86.177001953125 114.116455078125 84.874267578125 114.116455078125 83.0830078125C114.116455078125 81.178466796875 112.42431640625 80.456298828125 111.0791015625 80.109375L110.052490234375 79.84033203125C109.245361328125 79.6279296875 108.155029296875 79.252685546875 108.155029296875 78.25439453125C108.155029296875 77.3623046875 108.962158203125 76.7109375 110.24365234375 76.7109375C111.440185546875 76.7109375 112.296875 77.26318359375 112.403076171875 78.22607421875H113.974853515625C113.92529296875 76.548095703125 112.445556640625 75.30908203125 110.279052734375 75.30908203125C108.155029296875 75.30908203125 106.540771484375 76.519775390625 106.540771484375 78.346435546875C106.540771484375 79.790771484375 107.560302734375 80.67578125 109.287841796875 81.135986328125L110.519775390625 81.475830078125C111.652587890625 81.7802734375 112.5234375 82.141357421875 112.5234375 83.061767578125C112.5234375 84.081298828125 111.539306640625 84.760986328125 110.201171875 84.760986328125C108.9833984375 84.760986328125 107.9638671875 84.222900390625 107.871826171875 83.06884765625H106.25048828125C106.349609375 84.99462890625 107.83642578125 86.177001953125 110.208251953125 86.177001953125Z M123.38515625 86.0H124.95693359375V80.32177734375C124.95693359375 79.5146484375 124.921533203125 78.162353515625 124.893212890625 77.057861328125C125.29677734375 78.360595703125 125.714501953125 79.6845703125 125.955224609375 80.32177734375L128.14296875 86.0H129.523583984375L131.6830078125 80.32177734375C131.92373046875 79.663330078125 132.3626953125 78.303955078125 132.737939453125 77.0224609375C132.71669921875 78.19775390625 132.681298828125 79.54296875 132.681298828125 80.32177734375V86.0H134.2884765625V75.45068359375H131.89541015625L129.62978515625 81.504150390625C129.424462890625 82.084716796875 129.09169921875 83.260009765625 128.843896484375 84.20166015625C128.603173828125 83.23876953125 128.27041015625 82.070556640625 128.065087890625 81.504150390625L125.7640625 75.45068359375H123.38515625Z M143.160693359375 86.0H144.90947265625L145.851123046875 83.217529296875H150.000048828125L150.97001953125 86.0H152.718798828125L148.895556640625 75.45068359375H146.913134765625ZM146.311328125 81.872314453125 146.898974609375 80.130615234375C147.1609375 79.323486328125 147.48662109375 78.22607421875 147.897265625 76.718017578125C148.314990234375 78.2119140625 148.63359375 79.2880859375 148.916796875 80.130615234375L149.52568359375 81.872314453125Z M161.59809570312498 86.0H163.21235351562498V82.013916015625H165.36469726562498C165.39301757812498 82.013916015625 165.42841796874998 82.013916015625 165.45673828124998 82.013916015625L167.59492187499998 86.0H169.42866210937498L167.10639648437498 81.73779296875C168.38789062499998 81.25634765625 169.03217773437498 80.18017578125 169.03217773437498 78.76416015625C169.03217773437498 76.817138671875 167.82148437499998 75.45068359375 165.37885742187498 75.45068359375H161.59809570312498ZM163.21235351562498 80.63330078125V76.831298828125H165.19477539062498C166.75239257812498 76.831298828125 167.39667968749998 77.57470703125 167.39667968749998 78.76416015625C167.39667968749998 79.946533203125 166.75239257812498 80.63330078125 165.20893554687498 80.63330078125Z M177.81235351562498 76.83837890625H181.10458984374998V86.0H182.72592773437498V76.83837890625H186.00400390624998V75.45068359375H177.81235351562498Z M206.37514648437497 86.0H207.98940429687497V81.298828125H213.21450195312497V86.0H214.83583984374997V75.45068359375H213.21450195312497V79.9111328125H207.98940429687497V75.45068359375H206.37514648437497Z M228.91899414062496 86.1416015625C231.65190429687496 86.1416015625 233.66972656249996 84.1025390625 233.66972656249996 80.732421875C233.66972656249996 77.34814453125 231.65190429687496 75.30908203125 228.91899414062496 75.30908203125C226.17900390624996 75.30908203125 224.15410156249996 77.34814453125 224.15410156249996 80.732421875C224.15410156249996 84.1025390625 226.17900390624996 86.1416015625 228.91899414062496 86.1416015625ZM228.91899414062496 84.6689453125C227.10649414062496 84.6689453125 225.75419921874996 83.28125 225.75419921874996 80.732421875C225.75419921874996 78.176513671875 227.10649414062496 76.78173828125 228.91899414062496 76.78173828125C230.71733398437496 76.78173828125 232.06962890624996 78.16943359375 232.06962890624996 80.732421875C232.06962890624996 83.28125 230.71733398437496 84.6689453125 228.91899414062496 84.6689453125Z M242.98798828124995 86.0H244.55976562499995V80.32177734375C244.55976562499995 79.5146484375 244.52436523437495 78.162353515625 244.49604492187495 77.057861328125C244.89960937499995 78.360595703125 245.31733398437495 79.6845703125 245.55805664062495 80.32177734375L247.74580078124995 86.0H249.12641601562495L251.28583984374995 80.32177734375C251.52656249999995 79.663330078125 251.96552734374995 78.303955078125 252.34077148437495 77.0224609375C252.31953124999995 78.19775390625 252.28413085937495 79.54296875 252.28413085937495 80.32177734375V86.0H253.89130859374995V75.45068359375H251.49824218749995L249.23261718749995 81.504150390625C249.02729492187495 82.084716796875 248.69453124999995 83.260009765625 248.44672851562495 84.20166015625C248.20600585937495 83.23876953125 247.87324218749995 82.070556640625 247.66791992187495 81.504150390625L245.36689453124995 75.45068359375H242.98798828124995Z M263.570654296875 86.0H270.254248046875V84.6123046875H265.184912109375V81.362548828125H269.857763671875V79.98193359375H265.184912109375V76.83837890625H270.211767578125V75.45068359375H263.570654296875Z M283.20458984375 86.177001953125C285.6826171875 86.177001953125 287.11279296875 84.874267578125 287.11279296875 83.0830078125C287.11279296875 81.178466796875 285.420654296875 80.456298828125 284.075439453125 80.109375L283.048828125 79.84033203125C282.24169921875 79.6279296875 281.1513671875 79.252685546875 281.1513671875 78.25439453125C281.1513671875 77.3623046875 281.95849609375 76.7109375 283.239990234375 76.7109375C284.4365234375 76.7109375 285.293212890625 77.26318359375 285.3994140625 78.22607421875H286.97119140625C286.921630859375 76.548095703125 285.44189453125 75.30908203125 283.275390625 75.30908203125C281.1513671875 75.30908203125 279.537109375 76.519775390625 279.537109375 78.346435546875C279.537109375 79.790771484375 280.556640625 80.67578125 282.2841796875 81.135986328125L283.51611328125 81.475830078125C284.64892578125 81.7802734375 285.519775390625 82.141357421875 285.519775390625 83.061767578125C285.519775390625 84.081298828125 284.53564453125 84.760986328125 283.197509765625 84.760986328125C281.979736328125 84.760986328125 280.960205078125 84.222900390625 280.8681640625 83.06884765625H279.246826171875C279.345947265625 84.99462890625 280.832763671875 86.177001953125 283.20458984375 86.177001953125Z" fill="#08807c"/></svg></a>
+    <div class="step-count" id="count" aria-live="polite"></div>
+  </header>
+  <div class="bar" role="progressbar" aria-label="Progress"><i id="bar"></i></div>
+  <div class="preview" id="previewNote">Preview only: answers aren't sent from this copy.</div>
+
+  <!-- Welcome -->
+  <section class="step on" data-step="welcome">
+    <h1>See what your home <em>could do.</em></h1>
+    <p class="lead">A few minutes, mostly taps. Tell us what you'd like, send a floor plan, and we'll build you a free 3D model of your own home showing exactly what's possible.</p>
+    <ol class="how">
+      <li><span class="n">1</span><div><strong>You tell us</strong><span>What you'd like your home to do.</span></div></li>
+      <li><span class="n">2</span><div><strong>We build your model</strong><span>A 3D preview of your home with everything in it.</span></div></li>
+      <li><span class="n">3</span><div><strong>You decide</strong><span>No cost and nothing to commit to.</span></div></li>
+    </ol>
+  </section>
+
+  <!-- Contact -->
+  <section class="step" data-step="contact">
+    <h2>First, who are you?</h2>
+    <p class="lead">So we know who to send your model to.</p>
+    <label class="f" for="name">Your name</label>
+    <input type="text" id="name" autocomplete="name">
+    <label class="f" for="email">Email</label>
+    <input type="email" id="email" autocomplete="email" inputmode="email">
+    <label class="f" for="town">Town or city <small>(optional)</small></label>
+    <input type="text" id="town" autocomplete="address-level2">
+    <label class="f" for="phone">Phone <small>(optional)</small></label>
+    <input type="tel" id="phone" autocomplete="tel">
+  </section>
+
+  <!-- Home -->
+  <section class="step" data-step="home">
+    <h2>Your home</h2>
+    <p class="lead">Roughly is fine.</p>
+    <div class="opts two" data-group="homeType" data-single>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Flat"><span class="ic" data-ic="flat"></span><span class="t">Flat</span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="House"><span class="ic" data-ic="house"></span><span class="t">House</span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Bungalow"><span class="ic" data-ic="bungalow"></span><span class="t">Bungalow</span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Other"><span class="ic" data-ic="other"></span><span class="t">Other</span></label>
+    </div>
+    <label class="f">How is it used?</label>
+    <div class="chips" data-group="homeUse" data-single>
+      <span class="chip" tabindex="0">We live here</span><span class="chip" tabindex="0">Holiday let</span><span class="chip" tabindex="0">Second home</span><span class="chip" tabindex="0">Let to tenants</span>
+    </div>
+    <label class="f">Bedrooms</label>
+    <div class="chips" data-group="bedrooms" data-single>
+      <span class="chip" tabindex="0">1</span><span class="chip" tabindex="0">2</span><span class="chip" tabindex="0">3</span><span class="chip" tabindex="0">4</span><span class="chip" tabindex="0">5+</span>
+    </div>
+    <label class="f">Floors</label>
+    <div class="chips" data-group="floors" data-single>
+      <span class="chip" tabindex="0">1</span><span class="chip" tabindex="0">2</span><span class="chip" tabindex="0">3+</span>
+    </div>
+  </section>
+
+  <!-- Heating -->
+  <section class="step" data-step="heating">
+    <h2>How is it heated?</h2>
+    <p class="lead">This decides which heating controls fit your home. Pick "Not sure" if you don't know.</p>
+    <div class="opts" data-group="heating" data-single>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Boiler (gas or oil)"><span class="ic" data-ic="flame"></span><span><span class="t">Boiler</span><br><span class="d">Gas or oil</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="District heating"><span class="ic" data-ic="city"></span><span><span class="t">District heating</span><br><span class="d">Hot water piped in from the area network</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Heat pump"><span class="ic" data-ic="fan"></span><span><span class="t">Heat pump</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Electric heaters"><span class="ic" data-ic="bolt"></span><span><span class="t">Electric heaters</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Not sure"><span class="ic" data-ic="help"></span><span><span class="t">Not sure</span></span><span class="tick"></span></label>
+    </div>
+  </section>
+
+  <!-- Wants -->
+  <section class="step" data-step="wants">
+    <h2>What would you like it to do?</h2>
+    <p class="lead">Tick as many as you like.</p>
+    <div class="opts" data-group="wants">
+      <label class="opt" tabindex="0"><input type="checkbox" value="Heating from my phone"><span class="ic" data-ic="therm"></span><span><span class="t">Heating from my phone</span><br><span class="d">Schedules, away mode, room by room</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Lights on timers"><span class="ic" data-ic="bulb"></span><span><span class="t">Lights on timers</span><br><span class="d">Or on when you walk in</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Door and window alerts"><span class="ic" data-ic="door"></span><span><span class="t">Door and window alerts</span><br><span class="d">Know if something's left open</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Leak alerts"><span class="ic" data-ic="drop"></span><span><span class="t">Leak alerts</span><br><span class="d">Under sinks, by the washing machine</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Damp and mould alerts"><span class="ic" data-ic="damp"></span><span><span class="t">Damp and mould alerts</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Check on the house while away"><span class="ic" data-ic="phone"></span><span><span class="t">Check on the house while away</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Voice control"><span class="ic" data-ic="mic"></span><span><span class="t">Voice control</span></span><span class="tick"></span></label>
+    </div>
+    <label class="f">Would you like to see your energy use?</label>
+    <div class="chips" data-group="energy" data-single>
+      <span class="chip" tabindex="0">Whole home</span><span class="chip" tabindex="0">Single appliances</span><span class="chip" tabindex="0">Both</span><span class="chip" tabindex="0">Not needed</span>
+    </div>
+    <p class="note">Single appliances means seeing what something like a heater or washing machine really costs to run.</p>
+  </section>
+
+  <!-- Extras -->
+  <section class="step" data-step="extras">
+    <h2>Anything else you'd like included?</h2>
+    <p class="lead">Optional extras. Skip if none.</p>
+    <div class="opts two" data-group="extras">
+      <label class="opt" tabindex="0"><input type="checkbox" value="Cameras"><span class="ic" data-ic="camera"></span><span class="t">Cameras</span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Video doorbell"><span class="ic" data-ic="bell"></span><span class="t">Doorbell</span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Smart lock"><span class="ic" data-ic="lock"></span><span class="t">Smart lock</span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="EV charger"><span class="ic" data-ic="car"></span><span class="t">EV charger</span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="TV and speakers"><span class="ic" data-ic="tv"></span><span class="t">TV &amp; speakers</span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Garden lighting"><span class="ic" data-ic="tree"></span><span class="t">Garden lights</span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Blinds or curtains"><span class="ic" data-ic="blinds"></span><span class="t">Blinds</span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Wall dashboard"><span class="ic" data-ic="tablet"></span><span class="t">Wall screen</span></label>
+    </div>
+    <label class="f">Do you use a voice assistant?</label>
+    <div class="chips" data-group="voice">
+      <span class="chip" tabindex="0">Alexa</span><span class="chip" tabindex="0">Google</span><span class="chip" tabindex="0">Siri</span><span class="chip" tabindex="0">None</span>
+    </div>
+  </section>
+
+  <!-- Holiday let (only shown for holiday lets) -->
+  <section class="step" data-step="letting" data-when="homeUse=Holiday let">
+    <h2>Your guests</h2>
+    <p class="lead">A screen in the house can greet guests and answer the usual questions for you. Tick what you'd like.</p>
+    <div class="opts" data-group="guest">
+      <label class="opt" tabindex="0"><input type="checkbox" value="Welcome screen with house rules"><span class="ic" data-ic="hello"></span><span><span class="t">Welcome screen</span><br><span class="d">Shows on check-in day, with your house rules</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Check-out list on the last morning"><span class="ic" data-ic="out"></span><span><span class="t">Check-out list</span><br><span class="d">Opens on the last morning with your leaving steps</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Heating controls for guests (with a maximum)"><span class="ic" data-ic="therm"></span><span><span class="t">Heating for guests</span><br><span class="d">Room by room, with a maximum you choose</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Local guide and things to do"><span class="ic" data-ic="map"></span><span><span class="t">Local guide</span><br><span class="d">Your favourite places nearby, with photos</span></span><span class="tick"></span></label>
+    </div>
+    <label class="f">Do bookings come through an online calendar?</label>
+    <div class="chips" data-group="calendar" data-single>
+      <span class="chip" tabindex="0">Yes</span><span class="chip" tabindex="0">No</span><span class="chip" tabindex="0">Not sure</span>
+    </div>
+    <p class="note">If they do, the welcome and check-out screens can open on the right days by themselves.</p>
+  </section>
+
+  <!-- Internet and support -->
+  <section class="step" data-step="support">
+    <h2>Internet and support</h2>
+    <p class="lead">Our hub plugs into your internet router with a short cable, so it's useful to know where the router is.</p>
+    <label class="f" for="router">Where is your router? <small>(optional)</small></label>
+    <input type="text" id="router" placeholder="E.g. living room, by the TV">
+    <label class="f">Does it have a spare network socket?</label>
+    <div class="chips" data-group="port" data-single>
+      <span class="chip" tabindex="0">Yes</span><span class="chip" tabindex="0">No</span><span class="chip" tabindex="0">Not sure</span>
+    </div>
+    <p class="note">The square sockets on the back for a network cable. If they're all used, a small adapter sorts it.</p>
+    <label class="f">How would you like support after it's set up?</label>
+    <div class="opts" data-group="supportLevel" data-single>
+      <label class="opt" tabindex="0"><input type="checkbox" value="On request"><span class="ic" data-ic="hand"></span><span><span class="t">On request</span><br><span class="d">We only connect when you switch us on</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Remote care"><span class="ic" data-ic="shield"></span><span><span class="t">Remote care</span><br><span class="d">We can fix things straight away. You can switch us off any time</span></span><span class="tick"></span></label>
+      <label class="opt" tabindex="0"><input type="checkbox" value="Not sure yet"><span class="ic" data-ic="help"></span><span><span class="t">Not sure yet</span></span><span class="tick"></span></label>
+    </div>
+    <div class="promise"><span class="ico" data-ic="lock"></span><div><b>Either way, your network stays yours.</b>We only ever reach the smart home hub, never your other devices, and we never need your Wi-Fi password or router login.</div></div>
+  </section>
+
+  <!-- Photos -->
+  <section class="step" data-step="photos">
+    <h2>Your floor plan and rooms</h2>
+    <p class="lead">This is what we build your 3D model from. A photo of a plan, an estate agent listing, or a hand sketch all work.</p>
+    <label class="f">Floor plan</label>
+    <div class="drop" data-pick="plan" tabindex="0" role="button"><b>Add floor plan</b><span>Photo, screenshot or PDF</span></div>
+    <input type="file" id="planInput" accept="image/*,application/pdf" multiple hidden>
+    <div class="thumbs" id="planThumbs"></div>
+    <label class="f">Room photos <small>(optional, up to 12)</small></label>
+    <div class="drop" data-pick="rooms" tabindex="0" role="button"><b>Add room photos</b><span>One or two of each main room</span></div>
+    <input type="file" id="roomsInput" accept="image/*" multiple hidden>
+    <div class="thumbs" id="roomsThumbs"></div>
+    <p class="note">No floor plan to hand? Carry on, and we'll ask for it later.</p>
+  </section>
+
+  <!-- Final -->
+  <section class="step" data-step="final">
+    <h2>Last bit</h2>
+    <label class="f">When are you thinking?</label>
+    <div class="chips" data-group="timing" data-single>
+      <span class="chip" tabindex="0">As soon as possible</span><span class="chip" tabindex="0">In 1 to 3 months</span><span class="chip" tabindex="0">Later this year</span><span class="chip" tabindex="0">Just curious</span>
+    </div>
+    <label class="f" for="notes">Anything else we should know? <small>(optional)</small></label>
+    <textarea id="notes" placeholder="E.g. we have a dog, the bathroom always gets damp…"></textarea>
+    <p class="note">We'll only use your details to build and send your preview. Your photos are stored privately and never shared.</p>
+    <div class="err" id="err"></div>
+  </section>
+
+  <!-- Sending / Done -->
+  <section class="step" data-step="done">
+    <div class="done">
+      <div class="big wait" id="doneIcon"></div>
+      <h1 id="doneTitle">Sending…</h1>
+      <p class="lead" id="doneText" style="margin:0 auto 22px">Uploading your photos. Please keep this page open.</p>
+    </div>
+  </section>
+</div>
+
+<div class="nav"><div class="in">
+  <button class="btn ghost" id="back" type="button">Back</button>
+  <button class="btn primary" id="next" type="button">Let's start</button>
+</div></div>
+
+<script>
+(function(){
+  var GAS = typeof google !== 'undefined' && google.script && google.script.run;
+  var API = 'https://script.google.com/macros/s/AKfycbzdgwRXabYf5NqO6rYD9HgmfK61Uag21uKCg-gIIT7h96Q4x08bPublepPk_rsK7VBdKg/exec';  // website copy (19 Nov 2026): answers go to the same Apps Script through doPost
+  var LIVE = true;
+
+  // Icons: one stroke set, drawn not emoji
+  var P={
+    flat:'<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1M11 21v-3h2v3"/>',
+    house:'<path d="M3 11l9-8 9 8"/><path d="M5 10v11h14V10"/><path d="M10 21v-6h4v6"/>',
+    bungalow:'<path d="M2 12l10-6 10 6"/><path d="M4 11v9h16v-9"/><path d="M10 20v-5h4v5"/>',
+    other:'<path d="M3 21h18"/><path d="M5 21V10l4-3 4 3v11"/><path d="M13 21v-7l3-2 3 2v7"/>',
+    flame:'<path d="M12 3c3 3 6 6 6 10a6 6 0 0 1-12 0c0-2.5 1.5-4 3-5.5 0 2 1 3 2 3 0-3 0-5 1-7.5z"/>',
+    city:'<path d="M3 21h18M5 21V8h6v13M11 21V4h8v17"/><path d="M14 8h2M14 12h2M14 16h2M7 12h2M7 16h2"/>',
+    fan:'<circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-7 4-7 2 0 2 3 0 5M14 12c4 0 7 1 7 4 0 2-3 2-5 0M12 14c0 4-1 7-4 7-2 0-2-3 0-5M10 12c-4 0-7-1-7-4 0-2 3-2 5 0"/>',
+    bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+    help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7"/><path d="M12 17h.01"/>',
+    therm:'<path d="M10 14V5a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0z"/><path d="M12 9v6"/>',
+    bulb:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',
+    door:'<path d="M6 21V3h12v18"/><path d="M3 21h18"/><circle cx="14.5" cy="12" r="1"/>',
+    drop:'<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/>',
+    damp:'<path d="M4 10h13a3 3 0 1 0-3-3"/><path d="M3 14h16a3 3 0 1 1-3 3"/><path d="M5 18h6"/>',
+    phone:'<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
+    mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+    camera:'<path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/>',
+    bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>',
+    lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    car:'<path d="M5 16l1.5-5h11L19 16"/><rect x="3" y="16" width="18" height="4" rx="1"/><path d="M7 20v1M17 20v1"/>',
+    tv:'<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    tree:'<path d="M12 22v-6"/><path d="M12 2l6 8h-3l4 6H5l4-6H6z"/>',
+    blinds:'<path d="M4 3h16M5 3v12M19 3v12"/><path d="M5 7h14M5 11h14M5 15h14"/><path d="M12 15v4"/>',
+    tablet:'<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M12 16h.01"/>',
+    hello:'<path d="M3 11l9-8 9 8"/><path d="M5 10v11h14V10"/><path d="M9 14c1.5 2 4.5 2 6 0"/>',
+    out:'<path d="M14 4H6v16h8"/><path d="M11 12h10M17 8l4 4-4 4"/>',
+    map:'<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+    hand:'<path d="M9 11V5a1.5 1.5 0 0 1 3 0v6"/><path d="M12 10V4a1.5 1.5 0 0 1 3 0v7"/><path d="M15 10.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-3l-2-3.5a1.5 1.5 0 0 1 2.5-1.5L9 15"/>',
+    shield:'<path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M9 12l2 2 4-4"/>',
+    check:'<path d="M5 12l5 5L20 7"/>', x:'<path d="M6 6l12 12M18 6L6 18"/>', warn:'<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17h.01"/>',
+    wait:'<path d="M12 3a9 9 0 1 0 9 9"/>'
+  };
+  var svg=function(k){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(P[k]||'')+'</svg>'};
+  document.querySelectorAll('[data-ic]').forEach(function(el){ el.innerHTML=svg(el.getAttribute('data-ic')); });
+  document.querySelectorAll('.tick').forEach(function(el){ el.innerHTML=svg('check'); });
+
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
+  var i = 0, sending = false;
+  var files = {plan:[], rooms:[]};
+  var MAX = {plan:4, rooms:12};
+  var $ = function(id){return document.getElementById(id)};
+
+  // Option cards and chips (click, Enter or Space)
+  document.querySelectorAll('[data-group]').forEach(function(g){
+    var single = g.hasAttribute('data-single');
+    g.querySelectorAll('.opt,.chip').forEach(function(el){
+      el.setAttribute('role', single ? 'radio' : 'checkbox'); el.setAttribute('aria-checked','false');
+      var toggle=function(e){
+        e.preventDefault();
+        var on = !el.classList.contains('sel');
+        if(single) g.querySelectorAll('.sel').forEach(function(s){s.classList.remove('sel');s.setAttribute('aria-checked','false')});
+        var now = single ? true : on;
+        el.classList.toggle('sel', now); el.setAttribute('aria-checked', String(now));
+        var e2=steps[i].querySelector('.err'); if(e2) e2.textContent='';
+      };
+      el.addEventListener('click', toggle);
+      el.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' ') toggle(e); });
+    });
+  });
+  function picked(name){
+    var g=document.querySelector('[data-group="'+name+'"]');
+    return Array.prototype.map.call(g.querySelectorAll('.sel'),function(el){
+      var inp=el.querySelector('input'); return inp?inp.value:el.textContent.trim();
+    });
+  }
+
+  // Photos: shrink on the phone before upload
+  document.querySelectorAll('[data-pick]').forEach(function(d){
+    var open=function(){ $(d.getAttribute('data-pick')+'Input').click(); };
+    d.addEventListener('click',open);
+    d.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } });
+  });
+  ['plan','rooms'].forEach(function(kind){
+    $(kind+'Input').addEventListener('change',function(e){
+      var list=Array.prototype.slice.call(e.target.files||[]);
+      e.target.value='';
+      list.forEach(function(f){
+        if(files[kind].length>=MAX[kind]) return;
+        var item={name:f.name, type:f.type, ready:null};
+        files[kind].push(item);
+        item.ready = prep(f).then(function(r){ item.data=r.data; item.type=r.type; item.thumb=r.thumb; draw(kind); return item; })
+          .catch(function(){ files[kind].splice(files[kind].indexOf(item),1); draw(kind); });
+        draw(kind);
+      });
+    });
+  });
+  function prep(f){
+    return new Promise(function(res,rej){
+      if(f.type==='application/pdf'){
+        if(f.size>9*1024*1024) return rej();
+        var fr=new FileReader(); fr.onload=function(){res({data:fr.result.split(',')[1],type:'application/pdf',thumb:null})}; fr.onerror=rej; fr.readAsDataURL(f); return;
+      }
+      var url=URL.createObjectURL(f), img=new Image();
+      img.onload=function(){
+        var s=Math.min(1,1600/Math.max(img.width,img.height));
+        var c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        var full=c.toDataURL('image/jpeg',0.78);
+        URL.revokeObjectURL(url);
+        res({data:full.split(',')[1],type:'image/jpeg',thumb:full});
+      };
+      img.onerror=function(){URL.revokeObjectURL(url);rej()};
+      img.src=url;
+    });
+  }
+  function draw(kind){
+    var box=$(kind+'Thumbs'); box.innerHTML='';
+    files[kind].forEach(function(it,idx){
+      var d=document.createElement('div');
+      if(it.thumb){var im=document.createElement('img'); im.src=it.thumb; im.alt=''; d.appendChild(im);}
+      else d.textContent = it.type==='application/pdf' ? 'PDF' : '…';
+      var x=document.createElement('button'); x.type='button'; x.innerHTML=svg('x'); x.setAttribute('aria-label','Remove');
+      x.onclick=function(){files[kind].splice(idx,1);draw(kind)};
+      d.appendChild(x); box.appendChild(d);
+    });
+  }
+
+  // Navigation: steps with data-when only show when that answer was picked
+  function active(s){
+    var w=s.getAttribute('data-when'); if(!w) return true;
+    var p=w.split('='); return picked(p[0]).indexOf(p[1])>-1;
+  }
+  function flow(){ return steps.filter(function(s){ return s.dataset.step!=='done' && active(s); }); }
+  function show(n){
+    steps[i].classList.remove('on'); i=n; steps[i].classList.add('on');
+    var f=flow(), pos=f.indexOf(steps[i]), total=f.length-1; // welcome not counted
+    var isDone=steps[i].dataset.step==='done';
+    $('count').textContent = (pos>0) ? ('Step '+pos+' of '+total) : '';
+    $('bar').style.width = isDone ? '100%' : (Math.max(pos,0)/(f.length)*100)+'%';
+    $('back').style.display = (i===0||isDone) ? 'none':'block';
+    $('next').style.display = isDone ? 'none':'block';
+    $('next').textContent = i===0 ? "Let's start" : (steps[i].dataset.step==='final' ? 'Send' : 'Next');
+    window.scrollTo(0,0);
+  }
+  function go(dir){
+    var f=flow(), pos=f.indexOf(steps[i]), t=f[pos+dir];
+    if(t) show(steps.indexOf(t));
+  }
+  function check(){
+    var s=steps[i].dataset.step, msg='';
+    if(s==='contact'){
+      if(!$('name').value.trim()) msg='Please add your name.';
+      else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($('email').value.trim())) msg='Please check your email address.';
+    }
+    if(s==='home' && !picked('homeType').length) msg='Please pick a home type.';
+    else if(s==='home' && !picked('homeUse').length) msg='Please pick how the home is used.';
+    if(s==='heating' && !picked('heating').length) msg='Please pick one (or "Not sure").';
+    if(s==='wants' && !picked('wants').length && !picked('energy').filter(function(x){return x!=='Not needed'}).length) msg='Please tick at least one.';
+    if(msg){ alertIn(msg); return false; }
+    return true;
+  }
+  function alertIn(msg){
+    var e=steps[i].querySelector('.err');
+    if(!e){ e=document.createElement('div'); e.className='err'; e.setAttribute('role','alert'); steps[i].appendChild(e); }
+    e.textContent=msg;
+  }
+  $('next').onclick=function(){
+    if(sending) return;
+    if(!check()) return;
+    if(steps[i].dataset.step==='final') return send();
+    go(1);
+  };
+  $('back').onclick=function(){ if(i>0 && !sending) go(-1); };
+
+  // Submit
+  function call(fn){
+    var args=Array.prototype.slice.call(arguments,1);
+    return new Promise(function(res,rej){
+      if(GAS){ var r=google.script.run.withSuccessHandler(res).withFailureHandler(rej); return r[fn].apply(r,args); }
+      fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:args})})
+        .then(function(x){ if(!x.ok) throw new Error('HTTP '+x.status); return x.json(); })
+        .then(function(j){ if(j && j.ok) res(j.result); else rej(new Error((j&&j.error)||'Failed')); })
+        .catch(rej);
+    });
+  }
+  function done(kind,title,text){
+    var b=$('doneIcon'); b.className='big'+(kind==='warn'?' bad':''); b.innerHTML=svg(kind);
+    $('doneTitle').textContent=title; $('doneText').textContent=text;
+  }
+  $('doneIcon').innerHTML=svg('wait');
+
+  function send(){
+    sending=true; $('next').disabled=true;
+    var lettingOn=active(document.querySelector('[data-step="letting"]'));
+    var answers={
+      name:$('name').value.trim(), email:$('email').value.trim(), town:$('town').value.trim(), phone:$('phone').value.trim(),
+      homeType:picked('homeType').join(''), homeUse:picked('homeUse').join(''), bedrooms:picked('bedrooms').join(''), floors:picked('floors').join(''),
+      heating:picked('heating').join(''), wants:picked('wants'), energy:picked('energy').join(''), extras:picked('extras'), voice:picked('voice'),
+      guest:lettingOn?picked('guest'):[], calendar:lettingOn?picked('calendar').join(''):'',
+      router:$('router').value.trim(), port:picked('port').join(''), supportLevel:picked('supportLevel').join(''),
+      timing:picked('timing').join(''), notes:$('notes').value.trim(),
+      planCount:files.plan.length, roomCount:files.rooms.length
+    };
+    show(steps.length-1);
+    var all=files.plan.map(function(f){return ['Floor plan',f]}).concat(files.rooms.map(function(f){return ['Room',f]}));
+    var token, sent=0, failed=0;
+    try{ navigator.wakeLock && navigator.wakeLock.request('screen').catch(function(){}); }catch(e){}
+    function upload(name,it,tries){
+      return call('uploadPhoto', token, name, it.type, it.data).then(function(){sent++},function(err){
+        if(tries>1) return new Promise(function(r){setTimeout(r,2000)}).then(function(){return upload(name,it,tries-1)});
+        failed++;
+      });
+    }
+    call('submitSurvey', answers).then(function(r){
+      token=r.token;
+      return all.reduce(function(p,pair,idx){
+        return p.then(function(){ return pair[1].ready; }).then(function(it){
+          if(!it || !it.data) return;
+          var ext = it.type==='application/pdf' ? '.pdf' : '.jpg';
+          $('doneText').textContent='Uploading photo '+(idx+1)+' of '+all.length+'… Please keep this page open.';
+          return upload(pair[0]+' '+(idx+1)+ext, it, 3);
+        });
+      }, Promise.resolve());
+    }).then(function(){
+      var fin=function(t){ return call('finishSurvey', token, sent, all.length).catch(function(e){ if(t>1) return new Promise(function(r){setTimeout(r,2000)}).then(function(){return fin(t-1)}); throw e; }); };
+      return fin(3);
+    }).then(function(){
+      var first=answers.name.split(' ')[0];
+      if(failed) done('check','Thank you, '+first+'!', sent+' of '+all.length+' photos arrived. We\'ll email you to collect the rest, then build your 3D model.');
+      else done('check','Thank you, '+first+'!', files.plan.length
+        ? "We've got everything. We'll build your 3D model and email it to you, usually within a few days."
+        : "We've got your answers. We'll email you shortly to ask for a floor plan, then build your 3D model.");
+    }).catch(function(){
+      done('warn','Something went wrong', token
+        ? "Your answers arrived, but some photos didn't upload. Don't worry, we'll email you to collect them."
+        : "Your answers didn't send. Please check your connection and try again.");
+      if(!token){ sending=false; $('next').disabled=false; setTimeout(function(){show(steps.indexOf(document.querySelector('[data-step="final"]')))},2500); }
+    });
+  }
+  show(0);
+})();
+</script>
+</body>
+</html>
