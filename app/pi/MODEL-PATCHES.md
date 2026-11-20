@@ -52,3 +52,9 @@ Header rules (14 Nov 2026): logo and clock have no box, no background and no glo
 
 The cleaned customer starting file (no personal panels, makes or names) is kept on the laptop, not here,
 because it still holds a real floor plan: Models\Template - in-home model\home.html with a README of what to set per home.
+
+## 2026-11-20 bulbs with no power (home.html and bushby-quick.js)
+- A smart bulb that Home Assistant can't reach has almost always been switched off at the wall. It now shows as **Off**, not Offline. Sensors, plugs and everything else still show Offline.
+- 3D model (each home's home.html): the bulb's pin says Off. Its panel shows "Offline · no power. Is the wall switch off? Try switching it on." and hides Turn on and brightness. Apply with `Build scripts\2026-11-20 bulbs no power\bulbs_no_power_patch.py home.html` on the laptop. It writes home.html.new and stops if the lines it changes aren't found exactly once.
+- Quick access (bushby-quick.js, generic): the tile says Off with a small "Offline · no power" line. Tapping it gives the wall-switch prompt instead of sending a command. **All on** skips those bulbs and says which ones had no power (the message stays 12 s).
+- Also fixed in bushby-quick.js: a successful command used to clear the message line straight away, so "All lights on" and its Undo button vanished at once. The message and Undo now stay for their full time.

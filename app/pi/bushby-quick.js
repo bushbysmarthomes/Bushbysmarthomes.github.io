@@ -74,6 +74,9 @@ async function loadUse() {
 }
 const offline = (id) => { const s = st(id); return !s || s.state === "unavailable" || s.state === "unknown"; };
 const isOn = (id) => (st(id) || {}).state === "on";
+// A smart bulb that Home Assistant can't reach has usually just been switched off at the wall: show it as Off, not Offline.
+const noPower = (id) => dom(id) === "light" && offline(id);
+const noPowerMsg = (id) => `${nameOf(id)} has no power. Is its wall switch off? Try switching it on.`;
 
 const ICON = {
   light: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg>',
@@ -109,6 +112,7 @@ const STYLE = `
 .bq-tile.on small{color:#FFFFFF}
 .bq-tile.dead{opacity:.5;background:#F1F5F4}
 .bq-tile.dead .bq-tap{cursor:default}
+.bq-np{font-size:11px;color:#5B6B78}
 .bq-bri{display:flex;align-items:center;gap:8px;padding:0 14px 14px}
 .bq-bri input{flex:1;min-width:0;height:44px;margin:0;accent-color:#08807C;cursor:pointer;touch-action:pan-y}
 .bq-tile.on .bq-bri input{accent-color:#fff}
@@ -142,7 +146,7 @@ let sheet = null, unsub = null, pending = {}, view = "all"; // view: "all" (Quic
 
 async function call(domain, service, ids) {
   const list = [].concat(ids);
-  try { await hass().callService(domain, service, { entity_id: list.length === 1 ? list[0] : list }); say(""); }
+  try { await hass().callService(domain, service, { entity_id: list.length === 1 ? list[0] : list }); if (!(undo && Date.now() < undo.until)) say(""); } // keep an "All on" message and its Undo
   catch (e) { list.forEach((id) => delete pending[id]); draw(true); say("That didn't go through: " + ((e && e.message) || e)); }
 }
 function say(t) { const el = sheet && sheet.querySelector(".bq-msg"); if (el) el.textContent = t; }
@@ -177,10 +181,10 @@ const briOf = (id) => {
 };
 
 function tile(id, icon) {
-  const off = offline(id), on = !off && shownOn(id);
+  const np = noPower(id), off = offline(id) && !np, on = !off && !np && shownOn(id);
   const area = areaOf(id), dim = !off && canDim(id), pct = dim ? (on ? briOf(id) || 100 : 0) : 0;
   return `<div class="bq-tile${on ? " on" : ""}${off ? " dead" : ""}" data-id="${esc(id)}">
-    <button class="bq-tap" type="button" aria-pressed="${on}" ${off ? "disabled" : ""}>${ICON[icon]}<b>${esc(nameOf(id))}</b><small>${off ? "Offline" : on ? "On" : "Off"}${area ? " · " + esc(area) : ""}</small></button>
+    <button class="bq-tap" type="button" aria-pressed="${on}" ${off ? "disabled" : ""}>${ICON[icon]}<b>${esc(nameOf(id))}</b><small>${off ? "Offline" : on ? "On" : "Off"}${area ? " · " + esc(area) : ""}</small>${np ? `<small class="bq-np">Offline · no power</small>` : ""}</button>
     ${dim ? `<label class="bq-bri"><input type="range" min="1" max="100" step="1" value="${pct || 1}" aria-label="Brightness of ${esc(nameOf(id))}"><output>${pct ? pct + "%" : "Off"}</output></label>` : ""}
   </div>`;
 }
@@ -236,6 +240,7 @@ function draw(force) {
     const id = t.dataset.id;
     const tap = t.querySelector(".bq-tap");
     tap.onclick = () => {
+      if (noPower(id)) { say(noPowerMsg(id)); return; }
       const on = !shownOn(id);
       expect(id, on); draw();
       call("homeassistant", on ? "turn_on" : "turn_off", id);
@@ -256,10 +261,11 @@ function draw(force) {
     sl.onpointerup = sl.onpointercancel = () => setTimeout(() => { dragging = false; }, 400);
   });
   body.querySelectorAll("[data-all]").forEach((b) => (b.onclick = () => {
-    const on = b.dataset.all === "on", ids = lights().filter((id) => !offline(id));
-    if (!ids.length) return;
-    undo = { prev: ids.map((id) => ({ id, on: shownOn(id) })), text: on ? "All lights on." : "All lights off.", until: Date.now() + 6000 };
-    setTimeout(() => { if (undo && Date.now() >= undo.until) { undo = null; draw(true); } }, 6100);
+    const on = b.dataset.all === "on", ids = lights().filter((id) => !offline(id)), skipped = on ? lights().filter(noPower) : [];
+    const skipText = !skipped.length ? "" : skipped.length === 1 ? ` ${noPowerMsg(skipped[0])}` : ` ${skipped.length} lights have no power (${skipped.map(nameOf).join(", ")}). Try their wall switches.`;
+    if (!ids.length) { if (skipText) say(skipText.trim()); return; }
+    undo = { prev: ids.map((id) => ({ id, on: shownOn(id) })), text: (on ? "All lights on." : "All lights off.") + skipText, until: Date.now() + (skipText ? 12000 : 6000) };
+    setTimeout(() => { if (undo && Date.now() >= undo.until) { undo = null; draw(true); } }, (skipText ? 12000 : 6000) + 100);
     expect(ids, on); draw(true);
     call("homeassistant", on ? "turn_on" : "turn_off", ids);
   }));
