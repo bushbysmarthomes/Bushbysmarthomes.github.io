@@ -115,11 +115,11 @@
       try {
         const r = await conn.sendMessagePromise({ type: "config/entity_registry/list_for_display" });
         const ents = {};
-        (r.entities || []).forEach((e) => { ents[e.ei] = { entity_id: e.ei, area_id: e.ai || null, device_id: e.di || null, hidden: !!e.hb }; });
+        (r.entities || []).forEach((e) => { ents[e.ei] = { entity_id: e.ei, area_id: e.ai || null, device_id: e.di || null, hidden: !!e.hb, platform: e.pl || null, entity_category: e.ec != null ? e.ec : null }; });
         hass.entities = ents;
       } catch (e) {}
       try { const a = await conn.sendMessagePromise({ type: "config/area_registry/list" }); hass.areas = Object.fromEntries(a.map((x) => [x.area_id, x])); } catch (e) {}
-      try { const d = await conn.sendMessagePromise({ type: "config/device_registry/list" }); hass.devices = Object.fromEntries(d.map((x) => [x.id, { id: x.id, area_id: x.area_id }])); } catch (e) {}
+      try { const d = await conn.sendMessagePromise({ type: "config/device_registry/list" }); hass.devices = Object.fromEntries(d.map((x) => [x.id, { id: x.id, area_id: x.area_id, name: x.name, name_by_user: x.name_by_user }])); } catch (e) {}
     };
     await reg();
     return hass;
