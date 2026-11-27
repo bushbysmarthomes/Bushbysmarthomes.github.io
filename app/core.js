@@ -93,10 +93,24 @@
     location.replace(location.pathname);
   }
 
+  // ---------- connection check: ping home; no answer in 4 s means the connection is dead, so open a new one ----------
+  let liveConn = null, checking = false;
+  async function checkConn() {
+    const conn = liveConn; if (!conn || checking) return;
+    checking = true;
+    try { await Promise.race([conn.ping(), new Promise((_, r) => setTimeout(() => r("timeout"), 4000))]); }
+    catch (e) { try { conn.reconnect(true); } catch (x) { location.reload(); } }
+    finally { checking = false; }
+  }
+
   // ---------- a stand-in for Home Assistant's own frontend object, which the 3D model expects ----------
   async function makeHass(conn, auth, base) {
     const hass = { states: {}, entities: {}, areas: {}, devices: {}, services: {} };
-    hass.callService = (d, s, data) => HAWS.callService(conn, d, s, data);
+    liveConn = conn;
+    // A phone that has been asleep can keep a dead connection that never reports closing: then the model shows old
+    // readings and button presses never reach home (27 Nov 2026, Worthing). Give up after 8 s, reconnect, and say so.
+    const withTimeout = (p, ms) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error("No answer from home. Reconnecting, try again in a few seconds.")), ms))]);
+    hass.callService = (d, s, data) => withTimeout(HAWS.callService(conn, d, s, data), 8000).catch((e) => { checkConn(); throw e; });
     hass.callWS = (msg) => conn.sendMessagePromise(msg);
     // Home Assistant's REST API, used e.g. to add or delete automations (admin logins only)
     hass.callApi = async (method, path, body) => {
@@ -208,6 +222,10 @@
       }
     }, { once: true });
     let started = false;
+    // keep the connection honest: check it whenever the app comes back to the front, comes back online, and every 30 s
+    addEventListener("online", checkConn);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkConn(); });
+    setInterval(() => { if (document.visibilityState === "visible") checkConn(); }, 30000);
     HAWS.subscribeEntities(conn, (ents) => {
       hass.states = ents;
       if (!started) { started = true; document.body.appendChild(el); }
