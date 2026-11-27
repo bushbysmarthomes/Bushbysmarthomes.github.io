@@ -129,7 +129,7 @@
       try {
         const r = await conn.sendMessagePromise({ type: "config/entity_registry/list_for_display" });
         const ents = {};
-        (r.entities || []).forEach((e) => { ents[e.ei] = { entity_id: e.ei, area_id: e.ai || null, device_id: e.di || null, hidden: !!e.hb, platform: e.pl || null, entity_category: e.ec != null ? e.ec : null }; });
+        (r.entities || []).forEach((e) => { ents[e.ei] = { entity_id: e.ei, area_id: e.ai || null, device_id: e.di || null, hidden: !!e.hb, platform: e.pl || null, entity_category: e.ec != null ? ((r.entity_categories || {})[e.ec] || "config") : null /* ec is a number (0 = config, 1 = diagnostic); 0 was read as 'no category' and the model controlled the plug's LED (27 Nov 2026) */ }; });
         hass.entities = ents;
       } catch (e) {}
       try { const a = await conn.sendMessagePromise({ type: "config/area_registry/list" }); hass.areas = Object.fromEntries(a.map((x) => [x.area_id, x])); } catch (e) {}
