@@ -70,6 +70,7 @@ automation:
         {% set ns = namespace(l=[]) %}
         {% for s in states.sensor
              if s.attributes.get('device_class') == 'battery'
+             and s.entity_id not in integration_entities('mobile_app')
              and s.state | is_number
              and s.state | float(100) < battery_limit %}
           {% set ns.l = ns.l + [s.name ~ ' (' ~ (s.state | float | round(0) | int) ~ '%)'] %}
